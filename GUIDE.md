@@ -1,9 +1,37 @@
-## Setup 
+## Setup & Information
 - VSCode ROS Setup: https://www.youtube.com/watch?v=RXyFSnjMd7M
 - VSCode GitHub Integration: https://code.visualstudio.com/docs/sourcecontrol/github
-
-## Information
-- Git Submodules: https://gist.github.com/gitaarik/8735255, https://git-scm.com/book/en/v2/Git-Tools-Submodules
+- Configure Git: https://www.youtube.com/watch?v=T6aHO6GEYQk
+  - Check git install: git --version
+  - Configure user (necessary):
+    - git config --global user.name "Sam Smith"
+    - git config --global user.email "samsmith@email.com"
+    - git config --global core.editor code
+    - To check: git config --list
+  - Add / Remove git tracking:
+    - git add <filename> (if this file gets deleted, the deletion will also be logged)
+      - More info: https://github.com/git-guides/git-add
+    - git rm <filename> -f (deletes from file system)
+    - git rm --cached <filename> (keeps file, removed from repo)
+    - git rm { --cached | -f } <filename> -r (recursive; purge a folder) 
+      - More info: https://devconnected.com/how-to-delete-file-on-git
+  - Ignoring Files & Folders with .gitignore:
+    - .gitignore contains list of items that won't be tracked, even with a git add -a. The following examples explain what each addition does:
+      - /path/test.txt ignores test.txt at specified path
+      - test.txt ignores any test.txt file in the folder structure
+      - test/ ignores every directory with the name test/
+      - test ignores every directory and file with the name test
+      - test* ignores every file starting with test, using the wildcard character (uses glob not regEx)
+      - .md ignores all files ending in .md
+      - !README.md ensures README.md is not ignored (unless you ignore the directory/ies which contains said file)
+        - More info: https://www.freecodecamp.org/news/gitignore-file-how-to-ignore-files-and-folders-in-git/
+  - Helpful:
+    - git status
+    - git reset / git reset HEAD
+  - For more help: git status --help / git help / another alternative
+- Git Submodules Information: 
+  - https://gist.github.com/gitaarik/8735255
+  - Recommended by Das: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 ## Useful commands
 - Reset Odometry: rosservice call /set_pose <press tab to populate an empty PoseStamped message, then hit enter>
