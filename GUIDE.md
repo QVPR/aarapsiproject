@@ -39,3 +39,6 @@
 - Record rosbag without high-data topics: rosbag record -a -O <filename> -x "/.*raw_image.*|/.*stitched_image.*|.*image_tiles.*|.*image\d"
   - Note: for best performance and data capture, run this command onboard (otherwise some images will be lost over the network)
   - This has been scripted (in ~/Documents/bags, ./record_rosbag_tool.sh <filename>)
+- Kill python processes that won't terminate:
+  - See what is running with ps -x | grep python
+  - Kill them with pgrep -f <common name to all you wish to terminate, such as file.py> | xargs kill -9
