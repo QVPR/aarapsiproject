@@ -1,4 +1,5 @@
 ## Setup & Information
+- OneDrive for Ubuntu: https://github.com/abraunegg/onedrive/blob/master/docs/ubuntu-package-install.md#distribution-ubuntu-2004
 - VSCode ROS Setup: https://www.youtube.com/watch?v=RXyFSnjMd7M
 - VSCode GitHub Integration: https://code.visualstudio.com/docs/sourcecontrol/github
 - Configure Git: https://www.youtube.com/watch?v=T6aHO6GEYQk
