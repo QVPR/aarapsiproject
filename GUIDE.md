@@ -1,4 +1,6 @@
 ## Setup & Information
+- AnyDesk installation (6.2.1) for Linux:
+  - http://deb.anydesk.com/howto.html
 - OneDrive for Ubuntu: https://github.com/abraunegg/onedrive/blob/master/docs/ubuntu-package-install.md#distribution-ubuntu-2004
 - VSCode ROS Setup: https://www.youtube.com/watch?v=RXyFSnjMd7M
 - VSCode GitHub Integration: https://code.visualstudio.com/docs/sourcecontrol/github
