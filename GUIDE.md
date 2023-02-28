@@ -1,10 +1,32 @@
 ## Setup & Information
+- PyTorch & CUDA 11.7 Installation (Warning: this may have unintended consequences on your system!)
+  - https://pytorch.org/ -> pip3 install torch torchvision torchaudio
+  - sudo apt install nvidia-cuda-toolkit
+  - https://gist.github.com/ksopyla/bf74e8ce2683460d8de6e0dc389fc7f5
+    - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+    - sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    - sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+    - sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+    - sudo apt update
+    - sudo apt upgrade
+    - sudo apt install cuda-toolkit-11-7
+    - https://developer.nvidia.com/downloads/c118-cudnn-local-repo-ubuntu2004-88012110-1amd64deb
+    - sudo cp /var/cudnn-local-repo-ubuntu2004-8.8.0.121/cudnn-local-B70907B4-keyring.gpg /usr/share/keyrings/
+    - sudo apt install ./cudnn-local-repo-ubuntu2004-8.8.0.121_1.0-1_amd64.deb
+    - Add CUDA_HOME to PATH environment (add to .bashrc):
+    - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
+    - export CUDA_HOME=/usr/local/cuda
+    - export PATH="/usr/local/cuda/:$PATH"
 - AnyDesk installation (6.2.1) for Linux:
   - http://deb.anydesk.com/howto.html
-- OneDrive for Ubuntu: https://github.com/abraunegg/onedrive/blob/master/docs/ubuntu-package-install.md#distribution-ubuntu-2004
-- VSCode ROS Setup: https://www.youtube.com/watch?v=RXyFSnjMd7M
-- VSCode GitHub Integration: https://code.visualstudio.com/docs/sourcecontrol/github
-- Configure Git: https://www.youtube.com/watch?v=T6aHO6GEYQk
+- OneDrive for Ubuntu: 
+  - https://github.com/abraunegg/onedrive/blob/master/docs/ubuntu-package-install.md#distribution-ubuntu-2004
+- VSCode ROS Setup: 
+  - https://www.youtube.com/watch?v=RXyFSnjMd7M
+- VSCode GitHub Integration: 
+  - https://code.visualstudio.com/docs/sourcecontrol/github
+- Configure Git: 
+  - https://www.youtube.com/watch?v=T6aHO6GEYQk
   - Check git install: git --version
   - Configure user (necessary):
     - git config --global user.name "Sam Smith"
