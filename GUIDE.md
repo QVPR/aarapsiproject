@@ -14,9 +14,11 @@
     - sudo cp /var/cudnn-local-repo-ubuntu2004-8.8.0.121/cudnn-local-B70907B4-keyring.gpg /usr/share/keyrings/
     - sudo apt install ./cudnn-local-repo-ubuntu2004-8.8.0.121_1.0-1_amd64.deb
     - Add CUDA_HOME to PATH environment (add to .bashrc):
-    - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
-    - export CUDA_HOME=/usr/local/cuda
-    - export PATH="/usr/local/cuda/:$PATH"
+      - Replace cuda-11.7 with correct directory within /usr/local/cuda***
+      - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-11.7/lib64:/usr/local/cuda/extras/CUPTI/lib64"
+      - export CUDA_HOME=/usr/local/cuda-11.7
+      - export PATH="/usr/local/cuda-11.7/bin:$PATH"
+    - source ~/.bashrc
 - AnyDesk installation (6.2.1) for Linux:
   - http://deb.anydesk.com/howto.html
 - OneDrive for Ubuntu: 
