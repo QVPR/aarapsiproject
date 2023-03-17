@@ -1,4 +1,10 @@
 ## Setup & Information
+- PatchNetVLAD + NetVLAD + HybridNet:
+  - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
+  - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
+  - sudo apt install caffe-cpu (more info: https://caffe.berkeleyvision.org/install_apt.html, https://askubuntu.com/questions/1329496/ubuntu-20-04-2-lts-unable-to-locate-package-caffe-cuda)
+  - pip install faiss-cpu
+  - pip install faiss-gpu
 - PyTorch & CUDA 11.7 Installation (Warning: this may have unintended consequences on your system!)
   - https://pytorch.org/ -> pip3 install torch torchvision torchaudio
   - sudo apt install nvidia-cuda-toolkit
