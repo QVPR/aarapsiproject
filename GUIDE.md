@@ -1,4 +1,15 @@
 ## Setup & Information
+- HDL Graph Slam and Localization Node Installations:
+  -  https://github.com/koide3/hdl_graph_slam
+  -  https://github.com/koide3/hdl_localization
+  -  sudo apt-get install ros-noetic-geodesy ros-noetic-pcl-ros ros-noetic-nmea-msgs ros-noetic-libg2o ros-noetic-tf-conversions
+  -  cd ~/catkin_ws/src
+  -  git clone https://github.com/koide3/ndt_omp.git
+  -  git clone https://github.com/SMRT-AIST/fast_gicp.git --recursive
+  -  git clone https://github.com/koide3/hdl_graph_slam
+  -  git clone https://github.com/koide3/hdl_localization
+  -  git clone https://github.com/koide3/hdl_global_localization
+  -  catkin_make -DCMAKE_BUILD_TYPE=Release -DBUILD_VGICP_CUDA=ON (CUDA accelerated version)
 - Caffe, OpenCV Installation (for HybridNet):
   - I used this guide, however made changes to be compatible with CUDA 11.7 and corresponding CUDNN version:
     - https://techboutique-official.medium.com/how-to-setup-caffe-with-cuda-10-1-and-cudnn-7-6-5-in-ubuntu-20-04-complete-guide-7a7f58cf0616
