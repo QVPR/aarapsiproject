@@ -1,11 +1,37 @@
 ## Setup & Information
+- Caffe, OpenCV Installation (for HybridNet):
+  - I used this guide, however made changes to be compatible with CUDA 11.7 and corresponding CUDNN version:
+    - https://techboutique-official.medium.com/how-to-setup-caffe-with-cuda-10-1-and-cudnn-7-6-5-in-ubuntu-20-04-complete-guide-7a7f58cf0616
+  - Ensure CUDA and CUDNN are installed correctly (see steps in this GUIDE.md, not the techboutique guide)
+  - Install OpenCV:
+    - sudo apt-get install build-essential cmake git unzip pkg-config libjpeg-dev libpng-dev libtiff-dev libavcodec-dev libavformat-dev libswscale-dev libgtk2.0-dev libcanberra-gtk* python3-dev python3-numpy python3-pip libxvidcore-dev libx264-dev libgtk-3-dev libtbb2 libtbb-dev libdc1394-22-dev libv4l-dev v4l-utils libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavresample-dev libvorbis-dev libxine2-dev libfaac-dev libmp3lame-dev libtheora-dev libopencore-amrnb-dev libopencore-amrwb-dev libopenblas-dev libatlas-base-dev libblas-dev liblapack-dev libeigen3-dev gfortran libhdf5-dev protobuf-compiler libprotobuf-dev libgoogle-glog-dev libgflags-dev
+    - cd /usr/include/linux && sudo ln -s -f ../libv4l1-videodev.h videodev.h && cd ~
+    - wget -O opencv.zip https://github.com/opencv/opencv/archive/4.4.0.zip
+    - wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.4.0.zip
+    - unzip opencv.zip && unzip opencv_contrib.zip && mv opencv-4.4.0 opencv && mv opencv_contrib-4.4.0 opencv_contrib
+    - Note: for the next steps, I placed these (opencv, opencv_contrib) folders inside a ~/Installations folder to keep my home tidy. If you wish to do similarly, you just need to adjust OPENCV_EXTRA_MODULES_PATH in the build command
+    - cd opencv && mkdir build && cd build
+    - Make Command: (Note, things to update: OPENCV_EXTRA_MODULES_PATH, CUDA_ARCH_BIN, CUDNN_LIBRARY, CUDNN_INCLUDE_DIR, CUDA_TOOLKIT_ROOT_DIR)
+    - cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=~/Installations/opencv_contrib/modules -D BUILD_TIFF=ON -D WITH_FFMPEG=ON -D WITH_GSTREAMER=ON -D WITH_TBB=ON -D BUILD_TBB=ON -D WITH_EIGEN=ON -D WITH_V4L=ON -D WITH_LIBV4L=ON -D WITH_VTK=OFF -D WITH_QT=OFF -D WITH_OPENGL=ON -D OPENCV_ENABLE_NONFREE=ON -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=OFF -D BUILD_NEW_PYTHON_SUPPORT=ON -D OPENCV_GENERATE_PKGCONFIG=ON -D BUILD_TESTS=OFF -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=8.6 -D WITH_CUDA=ON WITH_CUBLAS=ON -D WITH_CUDNN=ON -D CUDNN_LIBRARY=/usr/local/cuda-11.7/lib64/libcudnn.so.8.8.1 -D CUDNN_INCLUDE_DIR=/usr/local/cuda-11.7/include -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-11.7 -D BUILD_EXAMPLES=OFF -D OPENCV_DNN_CUDA=ON ..
+  - Install Caffe:
+    - sudo apt-get install cmake git unzip libprotobuf-dev libleveldb-dev liblmdb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler 
+    - sudo apt-get install --no-install-recommends libboost-all-dev
+    - sudo apt-get install libatlas-base-dev libopenblas-dev the python3-dev python3-skimage
+    - sudo pip3 install pydot
+    - sudo apt-get install graphviz
+    - cd ~/Installations && wget -O caffe.zip https://github.com/Qengineering/caffe/archive/ssd.zip && unzip caffe.zip && mv caffe-ssd caffe
+    - cd ~/Installations/caffe && cp Makefile.config.cp38_x86_64-linux-gnu_CUDA_example Makefile.config
+    - make clean
+    - make all -j$(nproc)
+    - make test -j$(nproc)
+    - make runtest -j$(nproc)
 - PatchNetVLAD + NetVLAD + HybridNet:
   - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
   - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
   - sudo apt install caffe-cpu (more info: https://caffe.berkeleyvision.org/install_apt.html, https://askubuntu.com/questions/1329496/ubuntu-20-04-2-lts-unable-to-locate-package-caffe-cuda)
   - pip install faiss-cpu
   - pip install faiss-gpu
-- PyTorch & CUDA 11.7 Installation (Warning: this may have unintended consequences on your system!)
+- PyTorch & CUDA 11.7 & CUDNN Installation (Warning: this may have unintended consequences on your system!)
   - https://pytorch.org/ -> pip3 install torch torchvision torchaudio
   - sudo apt install nvidia-cuda-toolkit
   - https://gist.github.com/ksopyla/bf74e8ce2683460d8de6e0dc389fc7f5
@@ -16,15 +42,19 @@
     - sudo apt update
     - sudo apt upgrade
     - sudo apt install cuda-toolkit-11-7
-    - https://developer.nvidia.com/downloads/c118-cudnn-local-repo-ubuntu2004-88012110-1amd64deb
-    - sudo cp /var/cudnn-local-repo-ubuntu2004-8.8.0.121/cudnn-local-B70907B4-keyring.gpg /usr/share/keyrings/
-    - sudo apt install ./cudnn-local-repo-ubuntu2004-8.8.0.121_1.0-1_amd64.deb
     - Add CUDA_HOME to PATH environment (add to .bashrc):
       - Replace cuda-11.7 with correct directory within /usr/local/cuda***
       - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-11.7/lib64:/usr/local/cuda/extras/CUPTI/lib64"
       - export CUDA_HOME=/usr/local/cuda-11.7
       - export PATH="/usr/local/cuda-11.7/bin:$PATH"
     - source ~/.bashrc
+  - https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html
+    - Download CUDNN file (Tar, not Deb) (https://developer.nvidia.com/rdp/cudnn-download)
+    - tar -xvf cudnn-linux-x86_64-8.x.x.x
+    - Using the correct cuda directory:
+      - sudo cp cudnn-*-archive/include/cudnn*.h /usr/local/cuda-11.7/include 
+      - sudo cp -P cudnn-*-archive/lib/libcudnn* /usr/local/cuda-11.7/lib64 
+      - sudo chmod a+r /usr/local/cuda-11.7/include/cudnn*.h /usr/local/cuda-11.7/lib64/libcudnn*
 - AnyDesk installation (6.2.1) for Linux:
   - http://deb.anydesk.com/howto.html
 - OneDrive for Ubuntu: 
