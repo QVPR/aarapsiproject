@@ -21,10 +21,12 @@
     - sudo apt-get install graphviz
     - cd ~/Installations && wget -O caffe.zip https://github.com/Qengineering/caffe/archive/ssd.zip && unzip caffe.zip && mv caffe-ssd caffe
     - cd ~/Installations/caffe && cp Makefile.config.cp38_x86_64-linux-gnu_CUDA_example Makefile.config
-    - make clean
-    - make all -j$(nproc)
-    - make test -j$(nproc)
-    - make runtest -j$(nproc)
+    - Update variables in Makefile.config:
+      -  CUDA_DIR := /usr/local/cuda-11.7
+      -  CUDA_ARCH (I commented out everything except computes 70&80.
+      -  PYTHON_INCLUDE (double check this one, mine was OK)
+      -  INCLUDE_DIRS (I had to correct the path for opencv4 to /usr/include/opencv4 which I checked using 'whereis opencv4' in terminal)
+    - make clean && make all -j$(nproc) && make test -j$(nproc) && make runtest -j$(nproc)
 - PatchNetVLAD + NetVLAD + HybridNet:
   - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
   - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
