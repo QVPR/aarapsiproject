@@ -6,5 +6,6 @@ Adversity and Adversary: Robust Adaptive Positioning Systems with Integrity
 
 ## Related Repositories:
 - https://github.com/owenclaxton-QUT/aarapsi_offrobot_ws
+- https://github.com/owenclaxton-QUT/aarapsi_robot_pack
 - https://github.com/QVPR/predict2improve
 - https://github.com/QVPR/vpr_primer
