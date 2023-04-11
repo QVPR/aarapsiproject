@@ -92,10 +92,7 @@
     - sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
     - git-credential-manager configure
     - Set up gpg key (https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/environment.md):
-      - sudo apt-get install pass
       - add environmental variable assignment to .bashrc: export GCM_CREDENTIAL_STORE="gpg"
-      - pass init "name-of-storage-key" i.e. "github password storage key"
-      - optional; to log changes: pass git init
       - Generate new GPG key (https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key):
         - gpg --full-generate-key
           - RSA and RSA, 4096 bits (minimum), 0 (key does not expire)
@@ -108,6 +105,22 @@
         - github.com -> settings -> SSH and GPG keys --> Add new GPG Key
         - Paste block from generation step and give name
         - Add new GPG key    
+      - Move to gpg2 (https://unix.stackexchange.com/questions/226944/pass-and-gpg-no-public-key)
+        - sudo apt install gnupg2
+        - gpg2 --import /tmp/gpgkey (will ask for the gpgkey passphrase, not your system passphrase)
+        - gpg2 --edit-key xxxxxxxx... (key xxxxxxx... from the import command)
+          - trust
+          - 5 (ultimate)
+          - y
+          - save
+      - optional; sign with gpg:
+        - git config --global user.signingkey xxxx...
+        - git config --global commit.gpgsign true
+      - Set up pass for authentication:
+        - sudo apt-get install pass
+        - pass init xxxxx... (from before)
+        - optional; to log changes: pass git init
+        - Now you should be able to do a git fetch/pull/... and only have to provide the gpg key passphrase
   - https://www.youtube.com/watch?v=T6aHO6GEYQk
   - Check git install: git --version
   - Configure user (necessary):
