@@ -88,6 +88,19 @@
     - git config --global user.email "samsmith@email.com"
     - git config --global core.editor code
     - To check: git config --list
+  - Configure ssh key:
+    - Part 1: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent 
+      - In terminal:
+      -  ssh-keygen -t ed25519 -C "samsmith@email.com"
+        - enter name or use default (default may override existing keys)
+        - enter passphrase or hit enter twice for no passphrase
+      - eval "$(ssh-agent -s)" (run ssh-agent in background)   
+      - ssh-add ~/.ssh/github_key_name
+    - Part 2: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
+      - copy key contents, i.e. cat ~/.ssh/github_key_name.pub (Make sure you use the .pub file)
+      - Github.com -> Settings -> SSH and GPG Keys -> New SSH Key
+      - Paste key contents and give it a name. Make sure you set to Authentication
+      - Add SSH key
   - Add / Remove git tracking:
     - git add <filename> (if this file gets deleted, the deletion will also be logged)
       - More info: https://github.com/git-guides/git-add
