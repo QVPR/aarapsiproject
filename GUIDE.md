@@ -91,6 +91,23 @@
     - wget "https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.886/gcm-linux_amd64.2.0.886.deb"
     - sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
     - git-credential-manager configure
+    - Set up gpg key (https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/environment.md):
+      - sudo apt-get install pass
+      - add environmental variable assignment to .bashrc: export GCM_CREDENTIAL_STORE="gpg"
+      - pass init "name-of-storage-key" i.e. "github password storage key"
+      - optional; to log changes: pass git init
+      - Generate new GPG key (https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key):
+        - gpg --full-generate-key
+          - RSA and RSA, 4096 bits (minimum), 0 (key does not expire)
+          - Sam Smith, samsmith@email.com, no comment (leave empty), O(kay)
+        - gpg --list-secret-keys --keyid-format=long
+          - Copy from sec line after rsa4096/xxxx... YYYY-MM-DD (copy the xxxx section)
+          - gpg --armor --export xxxxx...
+          - Copy whole block including the --begin... and the --end... sections
+      - Add new key to github account (https://docs.github.com/en/authentication/managing-commit-signature-verification/adding-a-gpg-key-to-your-github-account):
+        - github.com -> settings -> SSH and GPG keys --> Add new GPG Key
+        - Paste block from generation step and give name
+        - Add new GPG key    
   - https://www.youtube.com/watch?v=T6aHO6GEYQk
   - Check git install: git --version
   - Configure user (necessary):
