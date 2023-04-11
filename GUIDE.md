@@ -87,6 +87,10 @@
     - sudo add-apt-repository ppa:git-core/ppa
     - sudo apt update
     - sudo apt-get install git
+  - Install and configure git-credential-manager (needs git version 2.27+)
+    - wget "https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.886/gcm-linux_amd64.2.0.886.deb"
+    - sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
+    - git-credential-manager configure
   - https://www.youtube.com/watch?v=T6aHO6GEYQk
   - Check git install: git --version
   - Configure user (necessary):
