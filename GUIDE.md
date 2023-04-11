@@ -81,6 +81,12 @@
 - VSCode GitHub Integration: 
   - https://code.visualstudio.com/docs/sourcecontrol/github
 - Configure Git: 
+  - Upgrade git:
+    - git --version (I started on 2.25.1 and end at 2.40.0 on Ubuntu 20.04)
+    - sudo apt remove git
+    - sudo add-apt-repository ppa:git-core/ppa
+    - sudo apt update
+    - sudo apt-get install git
   - https://www.youtube.com/watch?v=T6aHO6GEYQk
   - Check git install: git --version
   - Configure user (necessary):
