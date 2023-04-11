@@ -44,8 +44,10 @@
   - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
   - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
   - sudo apt install caffe-cpu (more info: https://caffe.berkeleyvision.org/install_apt.html, https://askubuntu.com/questions/1329496/ubuntu-20-04-2-lts-unable-to-locate-package-caffe-cuda)
-  - pip install faiss-cpu
-  - pip install faiss-gpu
+  - Install one of:
+    - pip install faiss-cpu
+    - pip install faiss-gpu
+    - Once done, to fix error with finding faiss-*, add module path to PYTHONPATH variable (https://discuss.huggingface.co/t/unable-to-import-faiss/3439/2) i.e. in terminal get the location (pip show faiss-{cpu|gpu}), append 'faiss' to the end, and add to PYTHONPATH i.e. export PYTHONPATH=${PYTHONPATH}:$HOME/.local/lib/python3.8/site-packages/faiss (add that to .bashrc for convenience).
 - PyTorch & CUDA 11.7 & CUDNN Installation (Warning: this may have unintended consequences on your system!)
   - https://pytorch.org/ -> pip3 install torch torchvision torchaudio
   - sudo apt install nvidia-cuda-toolkit
