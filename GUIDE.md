@@ -107,6 +107,7 @@
         - Add new GPG key    
       - Move to gpg2 (https://unix.stackexchange.com/questions/226944/pass-and-gpg-no-public-key)
         - sudo apt install gnupg2
+        - gpg --export-secret-keys > /tmp/gpgkey
         - gpg2 --import /tmp/gpgkey (will ask for the gpgkey passphrase, not your system passphrase)
         - gpg2 --edit-key xxxxxxxx... (key xxxxxxx... from the import command)
           - trust
@@ -131,7 +132,8 @@
   - Configure ssh key:
     - Part 1: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent 
       - In terminal:
-      -  ssh-keygen -t ed25519 -C "samsmith@email.com"
+      - cd ~/.ssh (as next command generates in current folder)
+      - ssh-keygen -t ed25519 -C "samsmith@email.com"
         - enter name or use default (default may override existing keys)
         - enter passphrase or hit enter twice for no passphrase
       - eval "$(ssh-agent -s)" (run ssh-agent in background)   
@@ -141,6 +143,9 @@
       - Github.com -> Settings -> SSH and GPG Keys -> New SSH Key
       - Paste key contents and give it a name. Make sure you set to Authentication
       - Add SSH key
+    - Part 3: Use ssh key to authenticate
+      - git config --global gpg.format ssh
+      - git config --global user.signingkey /home/USER/.ssh/name_of_ssh_key_file.pub  
   - Add / Remove git tracking:
     - git add <filename> (if this file gets deleted, the deletion will also be logged)
       - More info: https://github.com/git-guides/git-add
