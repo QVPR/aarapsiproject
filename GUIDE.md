@@ -146,6 +146,10 @@
     - Part 3: Use ssh key to authenticate
       - git config --global gpg.format ssh
       - git config --global user.signingkey /home/USER/.ssh/name_of_ssh_key_file.pub  
+      - Set each repository to use the ssh url:
+        - git remote set-url origin git@github.com:user/repository_url.git
+      - Tell git which key to use by defining the ssh command:
+        - git config --global core.sshCommand "ssh -i $HOME/.ssh/key_name"
   - Add / Remove git tracking:
     - git add <filename> (if this file gets deleted, the deletion will also be logged)
       - More info: https://github.com/git-guides/git-add
