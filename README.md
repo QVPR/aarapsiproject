@@ -10,6 +10,7 @@ Adversity and Adversary: Robust Adaptive Positioning Systems with Integrity
 - https://github.com/QVPR/aarapsi_robot_pack
 - https://github.com/QVPR/pyaarapsi
 ### Extended works:
+- https://github.com/carson-sky/robotvpr
 - https://github.com/QVPR/predict2improve
 - https://github.com/QVPR/vpr_primer
 - https://github.com/GabeBolton/ImageLocationSecurity
