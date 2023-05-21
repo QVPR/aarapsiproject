@@ -28,7 +28,7 @@
     - sudo apt-get install cmake git unzip libprotobuf-dev libleveldb-dev liblmdb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler 
     - sudo apt-get install --no-install-recommends libboost-all-dev
     - sudo apt-get install libatlas-base-dev libopenblas-dev the python3-dev python3-skimage
-    - sudo pip3 install pydot
+    - pip3 install pydot
     - sudo apt-get install graphviz
     - cd ~/Installations && wget -O caffe.zip https://github.com/Qengineering/caffe/archive/ssd.zip && unzip caffe.zip && mv caffe-ssd caffe
     - cd ~/Installations/caffe && cp Makefile.config.cp38_x86_64-linux-gnu_CUDA_example Makefile.config
