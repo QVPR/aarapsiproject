@@ -39,7 +39,7 @@
       -  INCLUDE_DIRS (I had to correct the path for opencv4 to /usr/include/opencv4 which I checked using 'whereis opencv4' in terminal)
     - make clean && make all -j$(nproc) && make test -j$(nproc) && make runtest -j$(nproc)
     - make pycaffe && make pytest
-    - extend PYTHONPATH in .bashrc: export PYTHONPATH="${PYTHONPATH}:$HOME/caffe/python"
+    - extend PYTHONPATH in .bashrc: export PYTHONPATH="${PYTHONPATH}:$HOME/Installations/caffe/python"
 - PatchNetVLAD + NetVLAD + HybridNet:
   - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
   - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
