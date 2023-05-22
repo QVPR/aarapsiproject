@@ -97,6 +97,7 @@
         - rpm --checksig --verbose git-credential-manager-2.0.4-1.noarch.rpm (should see: V4 RSA/SHA256 Signature, key ID ba34dbc2: OK)
         - sudo alien --install git-credential-manager-2.0.4-1.noarch.rpm 
     - git-credential-manager configure
+      - if /bin/java missing: sudo apt install default-jre
     - Set up gpg key (https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/environment.md):
       - add environmental variable assignment to .bashrc: export GCM_CREDENTIAL_STORE="gpg"
       - Generate new GPG key (https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key):
