@@ -88,8 +88,14 @@
     - sudo apt update
     - sudo apt-get install git
   - Install and configure git-credential-manager (needs git version 2.27+)
-    - wget "https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.886/gcm-linux_amd64.2.0.886.deb"
-    - sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
+    - wget "https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.886/gcm-linux_amd64.2.0.886.deb" && sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
+      - This won't work on arm64 architectures. Instead:
+        - Download: https://github.com/Microsoft/Git-Credential-Manager-for-Mac-and-Linux/releases/download/git-credential-manager-2.0.4/git-credential-manager-2.0.4-1.noarch.rpm
+        - Download: https://github.com/Microsoft/Git-Credential-Manager-for-Mac-and-Linux/blob/master/RPM-GPG-KEY.txt
+        - sudo apt-get install alien rpm
+        - sudo rpm --import RPM-GPG-KEY.txt
+        - rpm --checksig --verbose git-credential-manager-2.0.4-1.noarch.rpm (should see: V4 RSA/SHA256 Signature, key ID ba34dbc2: OK)
+        - sudo alien --install git-credential-manager-2.0.4-1.noarch.rpm 
     - git-credential-manager configure
     - Set up gpg key (https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/environment.md):
       - add environmental variable assignment to .bashrc: export GCM_CREDENTIAL_STORE="gpg"
