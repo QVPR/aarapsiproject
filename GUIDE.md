@@ -2,8 +2,8 @@
 - HDL Graph Slam and Localization Node Installations:
   -  https://github.com/koide3/hdl_graph_slam
   -  https://github.com/koide3/hdl_localization
-  -  sudo apt-get install ros-noetic-geodesy ros-noetic-pcl-ros ros-noetic-nmea-msgs ros-noetic-libg2o ros-noetic-tf-conversions
-  -  cd ~/catkin_ws/src ros-noetic-eigen-conversions
+  -  sudo apt-get install ros-noetic-geodesy ros-noetic-pcl-ros ros-noetic-nmea-msgs ros-noetic-libg2o ros-noetic-tf-conversions ros-noetic-eigen-conversions
+  -  cd ~/catkin_ws/src
   -  git clone https://github.com/koide3/ndt_omp.git
   -  git clone https://github.com/SMRT-AIST/fast_gicp.git --recursive
   -  git clone https://github.com/koide3/hdl_graph_slam
