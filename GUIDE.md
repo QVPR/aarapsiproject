@@ -69,9 +69,9 @@
     - Download CUDNN file (Tar, not Deb) (https://developer.nvidia.com/rdp/cudnn-download)
     - tar -xvf cudnn-linux-x86_64-8.x.x.x
     - Using the correct cuda directory:
-      - sudo cp cudnn-*-archive/include/cudnn*.h /usr/local/cuda-11.7/include 
-      - sudo cp -P cudnn-*-archive/lib/libcudnn* /usr/local/cuda-11.7/lib64 
-      - sudo chmod a+r /usr/local/cuda-11.7/include/cudnn*.h /usr/local/cuda-11.7/lib64/libcudnn*
+      - sudo cp cudnn-\*-archive/include/cudnn\*.h /usr/local/cuda-11.7/include 
+      - sudo cp -P cudnn-\*-archive/lib/libcudnn\* /usr/local/cuda-11.7/lib64 
+      - sudo chmod a+r /usr/local/cuda-11.7/include/cudnn\*.h /usr/local/cuda-11.7/lib64/libcudnn\*
 - AnyDesk installation (6.2.1) for Linux:
   - http://deb.anydesk.com/howto.html
 - OneDrive for Ubuntu: 
