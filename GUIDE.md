@@ -27,7 +27,7 @@
       - For Jetson Xavier AGX:
         - cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=~/Installations/opencv_contrib/modules -D BUILD_TIFF=ON -D WITH_FFMPEG=ON -D WITH_GSTREAMER=ON -D WITH_TBB=ON -D BUILD_TBB=ON -D WITH_EIGEN=ON -D WITH_V4L=ON -D WITH_LIBV4L=ON -D WITH_VTK=OFF -D WITH_QT=OFF -D WITH_OPENGL=ON -D OPENCV_ENABLE_NONFREE=ON -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=OFF -D BUILD_NEW_PYTHON_SUPPORT=ON -D OPENCV_GENERATE_PKGCONFIG=ON -D BUILD_TESTS=OFF -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=7.2 -D WITH_CUDA=ON WITH_CUBLAS=ON -D WITH_CUDNN=ON -D CUDNN_LIBRARY=/usr/local/cuda-11.4/lib64/libcudnn.so.8.9.1 -D CUDNN_INCLUDE_DIR=/usr/local/cuda-11.4/include -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-11.4 -D BUILD_EXAMPLES=OFF -D OPENCV_DNN_CUDA=ON ..
   - Install Caffe:
-    - sudo apt-get install cmake git unzip libprotobuf-dev libleveldb-dev liblmdb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler libgflags-dev
+    - sudo apt-get install cmake git unzip libprotobuf-dev libleveldb-dev liblmdb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler libgflags-dev libgoogle-glog-dev
     - sudo apt-get install --no-install-recommends libboost-all-dev
     - sudo apt-get install libatlas-base-dev libopenblas-dev the python3-dev python3-skimage
     - pip3 install pydot
