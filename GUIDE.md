@@ -161,8 +161,6 @@
         - git remote set-url origin git@github.com:user/repository_url.git
       - Tell git which key to use by defining the ssh command:
         - git config --global core.sshCommand "ssh -i $HOME/.ssh/key_name"
-    - Extra
-      - To force ssh key for pulling: git config --global url.git@github.com:.insteadOf https://github.com/
   - Add / Remove git tracking:
     - git add <filename> (if this file gets deleted, the deletion will also be logged)
       - More info: https://github.com/git-guides/git-add
