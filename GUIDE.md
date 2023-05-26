@@ -44,6 +44,13 @@
     - make clean && make all -j$(nproc) && make test -j$(nproc) && make runtest -j$(nproc)
     - make pycaffe && make pytest
     - extend PYTHONPATH in .bashrc: export PYTHONPATH="${PYTHONPATH}:$HOME/Installations/caffe/python"
+- Debugging:
+  - Error: Could not load library libcublasLt.so.11. Error: libcublasLt.so.11: cannot open shared object file: No such file or directory
+    - cd /usr/lib/x86_64-linux-gnu
+    - sudo ln -s libcublas.so.10.2.1.243 libcublas.so.11
+    - sudo ln -s libcublasLt.so.10.2.1.243 libcublasLt.so.11
+    - sudo ln -s libcusolver.so.10.2.0.243 libcusolver.so.11
+    - sudo ln -s libcusparse.so.10.3.0.243 libcusparse.so.11
 - PatchNetVLAD + NetVLAD + HybridNet:
   - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
   - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
