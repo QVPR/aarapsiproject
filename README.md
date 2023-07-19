@@ -7,6 +7,7 @@ Adversity and Adversary: Robust Adaptive Positioning Systems with Integrity
 ## Related Repositories:
 ### ROS pipeline:
 - https://github.com/QVPR/aarapsi_offrobot_ws
+- https://github.com/QVPR/cpr_office_extension_gazebo
 - https://github.com/QVPR/aarapsi_robot_pack
 - https://github.com/QVPR/pyaarapsi
 ### Extended works:
