@@ -1,0 +1,1 @@
+These data sets correspond to the paper titled 'Improving Robot Navigation Through Instantaneous and Historical Verification of Localization Estimates' (pending publishing by IEEE Robotics and Automation Letters)
