@@ -12,3 +12,7 @@ Adversity and Adversary: Robust Adaptive Positioning Systems with Integrity
 - https://github.com/QVPR/predict2improve
 - https://github.com/QVPR/vpr_primer
 - https://github.com/GabeBolton/ImageLocationSecurity
+
+## Paper 'Improving Robot Navigation Through Instantaneous and Historical Verification of Localization Estimates'
+Data sets can be downloaded from Google Drive:
+<https://drive.google.com/drive/folders/1346i4FKIC8ej-eyE_RBHQUNUxjE2F3a3?usp=sharing>
