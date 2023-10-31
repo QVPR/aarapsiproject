@@ -1,5 +1,5 @@
 # AARAPSI Project
-Adversity and Adversary: Robust Adaptive Positioning Systems with Integrity
+Adversity- and Adversary-Robust Adaptive Positioning Systems with Integrity
 
 ## Related Repositories:
 ### ROS pipeline:
