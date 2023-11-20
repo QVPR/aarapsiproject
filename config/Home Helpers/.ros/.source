@@ -1,0 +1,13 @@
+#!/bin/bash
+export ROS_MASTER_URI=http://localhost:11311
+#export ROS_MASTER_URI=http://jackal:11311
+#export ROS_MASTER_URI=http://jackaltravel:11311
+#export ROS_MASTER_URI=http://hypatia:11311
+#source /opt/ros/noetic/setup.bash
+#source $HOME/aarapsi_offrobot_ws/devel/setup.bash
+source $HOME/catkin_ws/devel/setup.bash
+export AARAPSI_ONEDRIVE_ROOT=$HOME/OneDrive/aarapsi_home
+export GAZEBO_MODEL_PATH=$HOME/catkin_ws/src/gazebo_models_worlds_collection/models:$HOME/catkin_ws/src/Dataset-of-Gazebo-Worlds-Models-and-Maps/robots
+export GAZEBO_RESOURCE_PATH=$HOME/catkin_ws/src/gazebo_models_worlds_collection/worlds:$HOME/catkin_ws/src/Dataset-of-Gazebo-Worlds-Models-and-Maps/worlds
+
+rosclean purge -y

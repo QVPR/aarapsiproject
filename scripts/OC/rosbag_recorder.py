@@ -1,0 +1,1 @@
+rosbag record -O $1 -e "/ros_indigosdk_occam/image0/compressed|/ros_indigosdk_occam/stitched_image0/compressed|/jackal_velocity_controller.*|/bluetooth.*|/odom.*|/velodyne_points|/vpr_nodes.*|.*cmd_vel"
