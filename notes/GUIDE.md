@@ -1,0 +1,210 @@
+## Setup & Information
+- HDL Graph Slam and Localization Node Installations:
+  -  https://github.com/koide3/hdl_graph_slam
+  -  https://github.com/koide3/hdl_localization
+  -  sudo apt-get install ros-noetic-geodesy ros-noetic-pcl-ros ros-noetic-nmea-msgs ros-noetic-libg2o ros-noetic-tf-conversions ros-noetic-eigen-conversions
+  -  cd ~/catkin_ws/src
+  -  git clone https://github.com/koide3/ndt_omp.git
+  -  git clone https://github.com/SMRT-AIST/fast_gicp.git --recursive
+  -  git clone https://github.com/koide3/hdl_graph_slam
+  -  git clone https://github.com/koide3/hdl_localization
+  -  git clone https://github.com/koide3/hdl_global_localization
+  -  catkin_make -DCMAKE_BUILD_TYPE=Release -DBUILD_VGICP_CUDA=ON (CUDA accelerated version)
+- Caffe, OpenCV Installation (for HybridNet):
+  - I used this guide, however made changes to be compatible with CUDA 11.7 and corresponding CUDNN version:
+    - https://techboutique-official.medium.com/how-to-setup-caffe-with-cuda-10-1-and-cudnn-7-6-5-in-ubuntu-20-04-complete-guide-7a7f58cf0616
+  - Ensure CUDA and CUDNN are installed correctly (see steps in this GUIDE.md, not the techboutique guide)
+  - Install OpenCV:
+    - sudo apt-get install build-essential cmake git unzip pkg-config libjpeg-dev libpng-dev libtiff-dev libavcodec-dev libavformat-dev libswscale-dev libgtk2.0-dev libcanberra-gtk* python3-dev python3-numpy python3-pip libxvidcore-dev libx264-dev libgtk-3-dev libtbb2 libtbb-dev libdc1394-22-dev libv4l-dev v4l-utils libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavresample-dev libvorbis-dev libxine2-dev libfaac-dev libmp3lame-dev libtheora-dev libopencore-amrnb-dev libopencore-amrwb-dev libopenblas-dev libatlas-base-dev libblas-dev liblapack-dev libeigen3-dev gfortran libhdf5-dev protobuf-compiler libprotobuf-dev libgoogle-glog-dev libgflags-dev
+    - cd /usr/include/linux && sudo ln -s -f ../libv4l1-videodev.h videodev.h && cd ~
+    - wget -O opencv.zip https://github.com/opencv/opencv/archive/4.4.0.zip
+    - wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.4.0.zip
+    - unzip opencv.zip && unzip opencv_contrib.zip && mv opencv-4.4.0 opencv && mv opencv_contrib-4.4.0 opencv_contrib
+    - Note: for the next steps, I placed these (opencv, opencv_contrib) folders inside a ~/Installations folder to keep my home tidy. If you wish to do similarly, you just need to adjust OPENCV_EXTRA_MODULES_PATH in the build command
+    - cd opencv && mkdir build && cd build
+    - Make Command: (Note, things to update: OPENCV_EXTRA_MODULES_PATH, CUDA_ARCH_BIN, CUDNN_LIBRARY, CUDNN_INCLUDE_DIR, CUDA_TOOLKIT_ROOT_DIR)
+    - cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=~/Installations/opencv_contrib/modules -D BUILD_TIFF=ON -D WITH_FFMPEG=ON -D WITH_GSTREAMER=ON -D WITH_TBB=ON -D BUILD_TBB=ON -D WITH_EIGEN=ON -D WITH_V4L=ON -D WITH_LIBV4L=ON -D WITH_VTK=OFF -D WITH_QT=OFF -D WITH_OPENGL=ON -D OPENCV_ENABLE_NONFREE=ON -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=OFF -D BUILD_NEW_PYTHON_SUPPORT=ON -D OPENCV_GENERATE_PKGCONFIG=ON -D BUILD_TESTS=OFF -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=8.6 -D WITH_CUDA=ON WITH_CUBLAS=ON -D WITH_CUDNN=ON -D CUDNN_LIBRARY=/usr/local/cuda-11.7/lib64/libcudnn.so.8.8.1 -D CUDNN_INCLUDE_DIR=/usr/local/cuda-11.7/include -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-11.7 -D BUILD_EXAMPLES=OFF -D OPENCV_DNN_CUDA=ON ..
+      - For Jetson Xavier AGX:
+        - The cmake FindCUDNN.cmake file looks for cudnn.h and cudnn_version.h, however in the file system these have been named cudnn_v8.h and cudnn_version_v8.h. The easiest fix is to perform two copy commands:
+          - sudo cp /usr/include/aarch64-linux-gnu/cudnn_v8.h /usr/include/aarch64-linux-gnu/cudnn.h
+          - sudo cp /usr/include/aarch64-linux-gnu/cudnn_version_v8.h /usr/include/aarch64-linux-gnu/cudnn_version_v8.h
+        - Additionally, the cmake command needs: -D CUDNN_VERSION=8.6
+        - cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=~/Installations/opencv_contrib/modules -D BUILD_TIFF=ON -D WITH_FFMPEG=ON -D WITH_GSTREAMER=ON -D WITH_TBB=ON -D BUILD_TBB=ON -D WITH_EIGEN=ON -D WITH_V4L=ON -D WITH_LIBV4L=ON -D WITH_VTK=OFF -D WITH_QT=OFF -D WITH_OPENGL=ON -D OPENCV_ENABLE_NONFREE=ON -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=OFF -D BUILD_NEW_PYTHON_SUPPORT=ON -D OPENCV_GENERATE_PKGCONFIG=ON -D BUILD_TESTS=OFF -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=7.2 -D WITH_CUDA=ON WITH_CUBLAS=ON -D WITH_CUDNN=ON -D CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so.8.6.0 -D CUDNN_INCLUDE_DIR=/usr/include/aarch64-linux-gnu -D CUDNN_VERSION=8.6 -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-11.4 -D BUILD_EXAMPLES=OFF -D OPENCV_DNN_CUDA=ON ..
+  - Install Caffe:
+    - sudo apt-get install cmake git unzip libprotobuf-dev libleveldb-dev liblmdb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler libgflags-dev libgoogle-glog-dev
+    - sudo apt-get install --no-install-recommends libboost-all-dev
+    - sudo apt-get install libatlas-base-dev libopenblas-dev the python3-dev python3-skimage
+    - pip3 install pydot
+    - sudo apt-get install graphviz
+    - cd ~/Installations && wget -O caffe.zip https://github.com/Qengineering/caffe/archive/ssd.zip && unzip caffe.zip && mv caffe-ssd caffe
+    - cd ~/Installations/caffe && cp Makefile.config.cp38_x86_64-linux-gnu_CUDA_example Makefile.config
+    - Update variables in Makefile.config:
+      -  CUDA_DIR := /usr/local/cuda-11.7
+      -  CUDA_ARCH (I commented out everything except computes 70&80.
+      -  PYTHON_INCLUDE (double check this one, mine was OK)
+      -  INCLUDE_DIRS (I had to correct the path for opencv4 to /usr/include/opencv4 which I checked using 'whereis opencv4' in terminal)
+      -  For Jackal: See config/Makefile.config.Jackal
+      -  For Scout/XavierAGX: See config/Makefile.config.Scout
+    - make clean && make all -j$(nproc) && make test -j$(nproc) && make runtest -j$(nproc)
+    - make pycaffe && make pytest
+    - extend PYTHONPATH in .bashrc: export PYTHONPATH="${PYTHONPATH}:$HOME/Installations/caffe/python"
+- Debugging:
+  - Error: Could not load library libcublasLt.so.11. Error: libcublasLt.so.11: cannot open shared object file: No such file or directory
+    - cd /usr/lib/x86_64-linux-gnu
+    - sudo ln -s libcublas.so.10.2.1.243 libcublas.so.11
+    - sudo ln -s libcublasLt.so.10.2.1.243 libcublasLt.so.11
+    - sudo ln -s libcusolver.so.10.2.0.243 libcusolver.so.11
+    - sudo ln -s libcusparse.so.10.3.0.243 libcusparse.so.11
+- PatchNetVLAD + NetVLAD + HybridNet:
+  - cd ~/aarapsi_offrobot_ws/src/aarapsi_intro_pack/src/aarapsi_intro_pack/Patch_NetVLAD 
+  - pip3 install --no-deps -e . (more info: https://github.com/QVPR/Patch-NetVLAD)
+  - sudo apt install caffe-cpu (more info: https://caffe.berkeleyvision.org/install_apt.html, https://askubuntu.com/questions/1329496/ubuntu-20-04-2-lts-unable-to-locate-package-caffe-cuda)
+  - Install one of:
+    - pip install faiss-cpu
+    - pip install faiss-gpu
+    - Once done, to fix error with finding faiss-*, add module path to PYTHONPATH variable (https://discuss.huggingface.co/t/unable-to-import-faiss/3439/2) i.e. in terminal get the location (pip show faiss-{cpu|gpu}), append 'faiss' to the end, and add to PYTHONPATH i.e. export PYTHONPATH=${PYTHONPATH}:$HOME/.local/lib/python3.8/site-packages/faiss (add that to .bashrc for convenience).
+- PyTorch & CUDA 11.7 & CUDNN Installation (Warning: this may have unintended consequences on your system!)
+  - https://pytorch.org/ -> pip3 install torch torchvision torchaudio
+  - sudo apt install nvidia-cuda-toolkit
+  - https://gist.github.com/ksopyla/bf74e8ce2683460d8de6e0dc389fc7f5
+    - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+    - sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    - sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+    - sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+    - sudo apt update
+    - sudo apt upgrade
+    - sudo apt install cuda-toolkit-11-7
+    - Add CUDA_HOME to PATH environment (add to .bashrc):
+      - Replace cuda-11.7 with correct directory within /usr/local/cuda***
+      - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-11.7/lib64:/usr/local/cuda/extras/CUPTI/lib64"
+      - export CUDA_HOME=/usr/local/cuda-11.7
+      - export PATH="/usr/local/cuda-11.7/bin:$PATH"
+    - source ~/.bashrc
+  - https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html
+    - Download CUDNN file (Tar, not Deb) (https://developer.nvidia.com/rdp/cudnn-download)
+    - tar -xvf cudnn-linux-x86_64-8.x.x.x
+    - Using the correct cuda directory:
+      - sudo cp cudnn-\*-archive/include/cudnn\*.h /usr/local/cuda-11.7/include 
+      - sudo cp -P cudnn-\*-archive/lib/libcudnn\* /usr/local/cuda-11.7/lib64 
+      - sudo chmod a+r /usr/local/cuda-11.7/include/cudnn\*.h /usr/local/cuda-11.7/lib64/libcudnn\*
+- AnyDesk installation (6.2.1) for Linux:
+  - http://deb.anydesk.com/howto.html
+- OneDrive for Ubuntu: 
+  - https://github.com/abraunegg/onedrive/blob/master/docs/ubuntu-package-install.md#distribution-ubuntu-2004
+- VSCode ROS Setup: 
+  - https://www.youtube.com/watch?v=RXyFSnjMd7M
+- VSCode GitHub Integration: 
+  - https://code.visualstudio.com/docs/sourcecontrol/github
+- Configure Git: 
+  - Upgrade git:
+    - git --version (I started on 2.25.1 and end at 2.40.0 on Ubuntu 20.04)
+    - sudo apt remove git
+    - sudo add-apt-repository ppa:git-core/ppa
+    - sudo apt update
+    - sudo apt-get install git
+  - Install and configure git-credential-manager (needs git version 2.27+)
+    - wget "https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.886/gcm-linux_amd64.2.0.886.deb" && sudo dpkg -i ./gcm-linux_amd64.2.0.886.deb
+      - This won't work on arm64 architectures. Instead:
+        - Download: https://github.com/Microsoft/Git-Credential-Manager-for-Mac-and-Linux/releases/download/git-credential-manager-2.0.4/git-credential-manager-2.0.4-1.noarch.rpm
+        - Download: https://github.com/Microsoft/Git-Credential-Manager-for-Mac-and-Linux/blob/master/RPM-GPG-KEY.txt
+        - sudo apt-get install alien rpm
+        - sudo rpm --import RPM-GPG-KEY.txt
+        - rpm --checksig --verbose git-credential-manager-2.0.4-1.noarch.rpm (should see: V4 RSA/SHA256 Signature, key ID ba34dbc2: OK)
+        - sudo alien --install git-credential-manager-2.0.4-1.noarch.rpm 
+    - git-credential-manager configure
+      - if /bin/java missing: sudo apt install default-jre
+    - Set up gpg key (https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/environment.md):
+      - add environmental variable assignment to .bashrc: export GCM_CREDENTIAL_STORE="gpg"
+      - Generate new GPG key (https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key):
+        - gpg --full-generate-key
+          - RSA and RSA, 4096 bits (minimum), 0 (key does not expire)
+          - Sam Smith, samsmith@email.com, no comment (leave empty), O(kay)
+        - gpg --list-secret-keys --keyid-format=long
+          - Copy from sec line after rsa4096/xxxx... YYYY-MM-DD (copy the xxxx section)
+          - gpg --armor --export xxxxx...
+          - Copy whole block including the --begin... and the --end... sections
+      - Add new key to github account (https://docs.github.com/en/authentication/managing-commit-signature-verification/adding-a-gpg-key-to-your-github-account):
+        - github.com -> settings -> SSH and GPG keys --> Add new GPG Key
+        - Paste block from generation step and give name
+        - Add new GPG key    
+      - Move to gpg2 (https://unix.stackexchange.com/questions/226944/pass-and-gpg-no-public-key)
+        - sudo apt install gnupg2
+        - gpg --export-secret-keys > /tmp/gpgkey
+        - gpg2 --import /tmp/gpgkey (will ask for the gpgkey passphrase, not your system passphrase)
+        - gpg2 --edit-key xxxxxxxx... (key xxxxxxx... from the import command)
+          - trust
+          - 5 (ultimate)
+          - y
+          - save
+      - optional; sign with gpg:
+        - git config --global user.signingkey xxxx...
+        - git config --global commit.gpgsign true
+      - Set up pass for authentication:
+        - sudo apt-get install pass
+        - pass init xxxxx... (from before)
+        - optional; to log changes: pass git init
+        - Now you should be able to do a git fetch/pull/... and only have to provide the gpg key passphrase
+  - https://www.youtube.com/watch?v=T6aHO6GEYQk
+  - Check git install: git --version
+  - Configure user (necessary):
+    - git config --global user.name "Sam Smith"
+    - git config --global user.email "samsmith@email.com"
+    - git config --global core.editor code
+    - To check: git config --list
+  - Configure ssh key:
+    - Part 1: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent 
+      - In terminal:
+      - cd ~/.ssh (as next command generates in current folder)
+      - ssh-keygen -t ed25519 -C "samsmith@email.com"
+        - enter name or use default (default may override existing keys)
+        - enter passphrase or hit enter twice for no passphrase
+      - eval "$(ssh-agent -s)" (run ssh-agent in background)   
+      - ssh-add ~/.ssh/github_key_name
+    - Part 2: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
+      - copy key contents, i.e. cat ~/.ssh/github_key_name.pub (Make sure you use the .pub file)
+      - Github.com -> Settings -> SSH and GPG Keys -> New SSH Key
+      - Paste key contents and give it a name. Make sure you set to Authentication
+      - Add SSH key
+    - Part 3: Use ssh key to authenticate
+      - git config --global gpg.format ssh
+      - git config --global user.signingkey /home/USER/.ssh/name_of_ssh_key_file.pub  
+      - Set each repository to use the ssh url:
+        - git remote set-url origin git@github.com:user/repository_url.git
+      - Tell git which key to use by defining the ssh command:
+        - git config --global core.sshCommand "ssh -i $HOME/.ssh/key_name"
+  - Add / Remove git tracking:
+    - git add <filename> (if this file gets deleted, the deletion will also be logged)
+      - More info: https://github.com/git-guides/git-add
+    - git rm <filename> -f (deletes from file system)
+    - git rm --cached <filename> (keeps file, removed from repo)
+    - git rm { --cached | -f } <filename> -r (recursive; purge a folder) 
+      - More info: https://devconnected.com/how-to-delete-file-on-git
+  - Ignoring Files & Folders with .gitignore:
+    - .gitignore contains list of items that won't be tracked, even with a git add -a. The following examples explain what each addition does:
+      - /path/test.txt ignores test.txt at specified path
+      - test.txt ignores any test.txt file in the folder structure
+      - test/ ignores every directory with the name test/
+      - test ignores every directory and file with the name test
+      - test* ignores every file starting with test, using the wildcard character (uses glob not regEx)
+      - .md ignores all files ending in .md
+      - !README.md ensures README.md is not ignored (unless you ignore the directory/ies which contains said file)
+        - More info: https://www.freecodecamp.org/news/gitignore-file-how-to-ignore-files-and-folders-in-git/
+  - Helpful:
+    - git status
+    - git reset / git reset HEAD
+  - For more help: git status --help / git help / another alternative
+- Git Submodules Information: 
+  - https://gist.github.com/gitaarik/8735255
+  - Recommended by Das: https://git-scm.com/book/en/v2/Git-Tools-Submodules
+
+## Useful commands
+- Reset Odometry: rosservice call /set_pose <press tab to populate an empty PoseStamped message, then hit enter>
+- Kill ROS network (do whilst connected to jackal): killall -9 rosmaster
+- Record rosbag without high-data topics: 
+  - Without throttle: rosbag record -a -O <b>filename</b> -x "/.\*raw_image.\*|/.\*stitched_image.\*|.\*image_tiles.\*|.\*image\d"
+  - With throttle: rosbag record -a -o short1 -x "/ros_indigosdk_occam.*"
+  - Note: for best performance and data capture, run this command onboard (otherwise some images will be lost over the network)
+  - This has been scripted (in ~/Documents/bags, ./record_rosbag_tool.sh <filename>)
+- Kill python processes that won't terminate:
+  - See what is running with ps -x | grep python
+  - Kill them with pgrep -f <common name to all you wish to terminate, such as file.py> | xargs kill -9

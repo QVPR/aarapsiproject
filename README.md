@@ -14,5 +14,5 @@ Adversity- and Adversary-Robust Adaptive Positioning Systems with Integrity
 - https://github.com/GabeBolton/ImageLocationSecurity
 
 ## Paper 1: 'Improving Robot Navigation Through Instantaneous and Historical Verification of Localization Estimates'
-Data sets can be downloaded from Google Drive:
+Code can be found in the Paper 1 folder. Data sets can be downloaded from Google Drive:
 <https://drive.google.com/drive/folders/1346i4FKIC8ej-eyE_RBHQUNUxjE2F3a3?usp=sharing>
