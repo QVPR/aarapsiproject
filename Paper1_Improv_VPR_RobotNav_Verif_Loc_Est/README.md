@@ -7,7 +7,9 @@ Our data sets can be downloaded from Google Drive, and are labelled to the envir
 
 For an overview of our Multi Layer Perceptron (MLP) network structure, please click [here](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Model_Structure.md)
 
-For a detailed break down of the statistical features we use to train our Multi Layer Perceptron (MLP) network, please click [here](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Statistical_Features.md)
+For a detailed break down of the statistical features we use to train our MLP network, please click [here](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Statistical_Features.md)
+
+For supplementary analysis of our MLP, please click [here](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Improving_VPR_Nav_Using_Verification_SUPP.pdf)
 
 ## Experiment 1
 The jupyter notebook file [Experiment_1_NN_Offline_Complete.ipynb](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Experiment_1_NN_Offline_Complete.ipynb) will allow you to recreate figures and results as presented in our paper for Experiment 1.
