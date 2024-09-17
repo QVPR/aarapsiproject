@@ -6,7 +6,7 @@ For the landing page for our 2024 paper 'Improving Visual Place Recognition Base
 
 ## Paper 2: 'Adversarial Attacks and Detection in Visual Place Recognition for Safer Robot Navigation'
 For the landing page for our 2024 paper 'Adversarial Attacks and Detection in Visual Place Recognition for Safer Robot Navigation',
-please click [here](https://github.com/QVPR/aarapsiproject/tree/main/Paper3_Adv_Attack_Detect_VPR_Safer_Nav#readme)
+please click [here](https://github.com/QVPR/aarapsiproject/tree/main/Paper2_Adv_Attack_Detect_VPR_Safer_Nav#readme)
 
 ## Related Repositories:
 ### ROS pipeline:
