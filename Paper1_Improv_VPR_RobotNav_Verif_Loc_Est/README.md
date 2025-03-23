@@ -1,8 +1,8 @@
 These scripts are for our IEEE RA-L paper (publication pending review):
 # Improving Visual Place Recognition Based Robot Navigation Through Verification of Localization Estimates
-These scripts rely on our Python module, [pyaarapsi](https://github.com/QVPR/pyaarapsi), and work best with version [v0.2.2](https://github.com/QVPR/pyaarapsi/tree/v0.2.2)
+These scripts rely on our Python module, [pyaarapsi](https://github.com/QVPR/pyaarapsi), and work best with version [v0.4.0](https://github.com/QVPR/pyaarapsi/tree/v0.4.0) on Ubuntu 24.04.2 LTS. See ```Installation.md``` for more information.
 
-Our data sets can be downloaded from Google Drive, and are labelled to the environment, condition, VPR descriptor, and whether they are for a reference or query set:
+Our data sets can be downloaded from Google Drive:
 <https://drive.google.com/drive/folders/1346i4FKIC8ej-eyE_RBHQUNUxjE2F3a3?usp=sharing>
 
 For an overview of our Multi Layer Perceptron (MLP) network structure, please click [here](https://github.com/QVPR/aarapsiproject/blob/main/Paper1_Improv_VPR_RobotNav_Verif_Loc_Est/Model_Structure.md)
