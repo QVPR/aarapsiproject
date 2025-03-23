@@ -3,6 +3,7 @@
 Shared methods.
 '''
 import copy
+import warnings
 from pathlib import Path
 from enum import Enum
 from itertools import product
@@ -14,28 +15,31 @@ import numpy as np
 from numpy.typing import NDArray
 import torch
 from torch import nn
+import pickle
 
-from pyaarapsi.core.classes.object_storage_handler import Object_Storage_Handler as OSH, Saver
+from pyaarapsi.core.classes.objectstoragehandler import ObjectStorageHandler as OSH, Saver
 from pyaarapsi.core.helper_tools import m2m_dist
-from pyaarapsi.vpr_simple.vpr_helpers import FeatureType
-from pyaarapsi.vpr_simple.svm_model_tool import SVMModelProcessor
-from pyaarapsi.vpred.robotmonitor import RobotMonitor2D
-from pyaarapsi.vpred.robotvpr import RobotVPR
-from pyaarapsi.vpred.robotrun import RobotRun
-from pyaarapsi.vpred.vpred_tools import find_precision_atR, find_recall_atP, \
+from pyaarapsi.vpr.vpr_helpers import VPRDescriptor
+from pyaarapsi.vpr.pred.svm_model_tool import SVMModelProcessor
+from pyaarapsi.vpr.pred.robotmonitor import RobotMonitor2D
+from pyaarapsi.vpr.pred.robotvpr import RobotVPR
+from pyaarapsi.vpr.pred.robotrun import RobotRun
+from pyaarapsi.vpr.pred.vpred_tools import find_precision_atR, find_recall_atP, \
     find_best_match_distances, find_vpr_performance_metrics
-from pyaarapsi.vpred.vpred_factors import find_factors
+from pyaarapsi.vpr.pred.vpred_factors import find_factors
+from pyaarapsi.vpr.classes.data.svmparams import SVMParams
+
 from pyaarapsi.pathing.basic import calc_path_stats
 
 from pyaarapsi.nn.param_helpers import make_storage_safe
-from pyaarapsi.nn.vpr_helpers import make_vpr_dataset_params, make_load_vpr_dataset, make_svm_dict
+from pyaarapsi.nn.vpr_helpers import make_vpr_dataset_params, make_load_vpr_dataset, \
+    make_svm_dict, make_vpr_dataset
 from pyaarapsi.nn.enums import TrainOrTest, AblationVersion
 from pyaarapsi.nn.visualize import get_acc_and_confusion_stats
-from pyaarapsi.nn.exceptions import BadAssessor, BadPredictor, BadAblationVersion
 from pyaarapsi.nn.params import DFNNTrain, DFNNTest, NNGeneral, DFGeneral, General, \
     DFExperiment1, DFExperiment2, Experiment1, Experiment2
-from pyaarapsi.nn.nn_helpers import test_nn_using_mvect, get_td_from_am, \
-    get_model_for, generate_dataloader_from_npz, process_data_through_model
+from pyaarapsi.nn.nn_helpers import get_td_from_am, get_model_for, process_data_through_model
+from adversity import AdversityGenerationMethods
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -49,59 +53,48 @@ class ExceedsMaximumSliceError(Exception):
     Experiment error code: experiment traverse length is too long.
     '''
 
-def make_naive_thresholds(  feature_type: Union[FeatureType, str], df_nn_train: DFNNTrain,
+def make_naive_thresholds(  vpr_descriptor: Union[VPRDescriptor, str], df_nn_train: DFNNTrain,
                             nn_general: NNGeneral, df_general: DFGeneral, general: General,
                             df_exp1: DFExperiment1, exp1: Experiment1,
                             verbose: bool = False) -> Tuple[float, float]:
     '''
     Generate naive precision and recall thresholds.
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
-
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     metric_names = ['p','r','tp','fp','tn','fn','d']
     num_pts = 2000 # number of points in PR-curve
-
-    get_model_for_params = {"feature_type": feature_type, "nn_general": nn_general,
-                            "df_nn_train": df_nn_train, "general": general, "allow_generate": True}
-
-    use_predictor_params = {"nn_threshold": df_nn_train.TRAIN_THRESHOLD[feature_type],
+    get_model_for_params = {"vpr_descriptor": vpr_descriptor, "nn_general": nn_general,
+                            "datagen": AdversityGenerationMethods, "df_nn_train": df_nn_train,
+                            "general": general, "allow_generate": True}
+    use_predictor_params = {"nn_threshold": df_nn_train.TRAIN_THRESHOLD[vpr_descriptor],
                             "df_nn_train": df_nn_train, "general": general}
-    
-    robotvprs = make_load_robotvprs(feature_type=feature_type, general=general,
+    robotvprs = make_load_robotvprs(vpr_descriptor=vpr_descriptor, general=general,
                                     df_general=df_general, df_exp1=df_exp1,
                                     exp1=exp1)
-
-    rvpr_office : RobotVPR = robotvprs['Office']['train']
-    rvpr_campus : RobotVPR = robotvprs['Campus']['train']
-
+    rvpr_office: RobotVPR = robotvprs['Office']['train']
+    rvpr_campus: RobotVPR = robotvprs['Campus']['train']
     train_data_office = get_td_from_am(env='Office', apply_model=df_nn_train.APPLY_MODEL)
     train_data_campus = get_td_from_am(env='Campus', apply_model=df_nn_train.APPLY_MODEL)
-
-    predictor_office  = get_model_for(train_data=train_data_office, **get_model_for_params)[0]
+    predictor_office = get_model_for(train_data=train_data_office, **get_model_for_params)[0]
     predictor_office.eval()
     if train_data_office.name == train_data_campus.name:
         predictor_campus = predictor_office
     else:
         predictor_campus = get_model_for(train_data=train_data_campus, **get_model_for_params)[0]
         predictor_campus.eval()
-
     y_pred_office = use_predictor(predictor=predictor_office, robot_vpr=rvpr_office,
                                     **use_predictor_params)
     y_pred_campus = use_predictor(predictor=predictor_campus, robot_vpr=rvpr_campus,
                                     **use_predictor_params)
-
     bm_distances_office = find_best_match_distances(rvpr_office.S)
     bm_distances_campus = find_best_match_distances(rvpr_campus.S)
-
     assert len(bm_distances_office) == len(y_pred_office) == len(rvpr_office.ALL_TRUE)
     assert len(bm_distances_campus) == len(y_pred_campus) == len(rvpr_campus.ALL_TRUE)
-
     all_bm_distances = np.concatenate([bm_distances_office, bm_distances_campus])
     all_y_pred = np.concatenate([y_pred_office, y_pred_campus])
     all_y = np.concatenate([rvpr_office.y, rvpr_campus.y])
     all_all_true = np.concatenate([rvpr_office.ALL_TRUE, rvpr_campus.ALL_TRUE])
     all_match_exists = np.concatenate([rvpr_office.match_exists, rvpr_campus.match_exists])
-
     d_sweep = np.linspace(all_bm_distances.min(), all_bm_distances.max(), num_pts)
     p_cl  = np.full_like(d_sweep, np.nan)
     r_cl  = np.full_like(d_sweep, np.nan)
@@ -109,30 +102,25 @@ def make_naive_thresholds(  feature_type: Union[FeatureType, str], df_nn_train: 
     fp_cl = np.full_like(d_sweep, np.nan)
     tn_cl = np.full_like(d_sweep, np.nan)
     fn_cl = np.full_like(d_sweep, np.nan)
-
     p_bl  = np.full_like(d_sweep, np.nan)
     r_bl  = np.full_like(d_sweep, np.nan)
     tp_bl = np.full_like(d_sweep, np.nan)
     fp_bl = np.full_like(d_sweep, np.nan)
     tn_bl = np.full_like(d_sweep, np.nan)
     fn_bl = np.full_like(d_sweep, np.nan)
-
     for i, threshold in enumerate(d_sweep):
         match_found = all_bm_distances <= threshold
         (p_cl[i], r_cl[i], tp_cl[i], fp_cl[i], tn_cl[i], fn_cl[i]) = find_vpr_performance_metrics(
             match_found & all_y_pred, all_y, all_match_exists, verbose=False)
         (p_bl[i], r_bl[i], tp_bl[i], fp_bl[i], tn_bl[i], fn_bl[i]) = find_vpr_performance_metrics(
             match_found & all_all_true, all_y, all_match_exists, verbose=False)
-
     cl_metrics = pd.Series(data=(p_cl,r_cl,tp_cl,fp_cl,tn_cl,fn_cl,d_sweep), index=metric_names)
     bl_metrics = pd.Series(data=(p_bl,r_bl,tp_bl,fp_bl,tn_bl,fn_bl,d_sweep), index=metric_names)
-
     # Find indices:
     _, equiv_r, match_r_d = find_precision_atR(bl_metrics.p, bl_metrics.r, cl_metrics.r[-1],
                                                verbose=verbose)
     equiv_p, _, match_p_d = find_recall_atP(bl_metrics.p, bl_metrics.r, cl_metrics.p[-1],
                                             verbose=verbose)
-
     # Compute naive precision and recall thresholds:
     naive_p_thresh = bl_metrics.d[match_p_d]
     naive_r_thresh = bl_metrics.d[match_r_d]
@@ -140,7 +128,7 @@ def make_naive_thresholds(  feature_type: Union[FeatureType, str], df_nn_train: 
         print(f'thresholds: {equiv_r}, {equiv_p} [{naive_p_thresh}, {naive_r_thresh}]')
     return naive_p_thresh, naive_r_thresh
 
-def make_load_naive_thresholds( feature_type: Union[FeatureType, str], df_nn_train: DFNNTrain,
+def make_load_naive_thresholds( vpr_descriptor: Union[VPRDescriptor, str], df_nn_train: DFNNTrain,
                                 nn_general: NNGeneral, df_general: DFGeneral, general: General,
                                 df_exp1: DFExperiment1, exp1: Experiment1,
                                 verbose: bool = False) -> Tuple[float, float]:
@@ -150,15 +138,15 @@ def make_load_naive_thresholds( feature_type: Union[FeatureType, str], df_nn_tra
     nthresh_loader = OSH(storage_path=Path(general.DIR_EXP_DS), build_dir=True,
                       build_dir_parents=True, prefix='nthresh', saver=Saver.NUMPY,
                       verbose=exp1.VERBOSE)
-    params = make_storage_safe({'label': 'nthresh', 'ft': feature_type, 'general': df_general,
-                                'exp1': df_exp1, 'train': df_nn_train})
+    params = make_storage_safe({'label': 'nthresh', 'vpr_descriptor': vpr_descriptor, \
+                                'general': df_general, 'exp1': df_exp1, 'train': df_nn_train})
     if (not exp1.FORCE_GENERATE) and nthresh_loader.load(params):
         nthresh_object = dict(nthresh_loader.get_object())
         naive_p_thresh = nthresh_object['naive_p_thresh']
         naive_r_thresh = nthresh_object['naive_r_thresh']
     else:
         naive_p_thresh, naive_r_thresh = make_naive_thresholds(
-            feature_type=feature_type, df_nn_train=df_nn_train, nn_general=nn_general,
+            vpr_descriptor=vpr_descriptor, df_nn_train=df_nn_train, nn_general=nn_general,
             df_general=df_general, general=general, df_exp1=df_exp1, exp1=exp1, verbose=verbose)
         if not exp1.SKIP_SAVE:
             nthresh_loader.set_object(object_params=params,
@@ -167,7 +155,7 @@ def make_load_naive_thresholds( feature_type: Union[FeatureType, str], df_nn_tra
             nthresh_loader.save()
     return naive_p_thresh, naive_r_thresh
 
-def generate_vpr_data(feature_type: Union[FeatureType, str],
+def generate_vpr_data(vpr_descriptor: Union[VPRDescriptor, str],
                       predictor: Union[SVMModelProcessor, RobotMonitor2D, nn.Module],
                       svm_predictor: RobotMonitor2D, qry_feats: NDArray, ref_feats: NDArray,
                       qry_xyw_gt: NDArray, ref_xyw_gt: NDArray, tolerance: float,
@@ -195,8 +183,8 @@ def generate_vpr_data(feature_type: Union[FeatureType, str],
         true_ind        = np.argmin(truth_vect)
         metric_err      = np.sqrt(np.square(ref_xyw_gt[true_ind,0] - ref_xyw_gt[match_ind,0]) + \
                                   np.square(ref_xyw_gt[true_ind,1] - ref_xyw_gt[match_ind,1]))
-        svm_factors_out = find_factors(factors_in=svm_predictor.factor_names, _S=dist_vect,
-                                        rXY=ref_xyw_gt[:,0:2], match_ind=match_ind,
+        svm_factors_out = find_factors(factors_in=svm_predictor.factor_names, sim_matrix=dist_vect,
+                                        ref_xy=ref_xyw_gt[:,0:2], match_ind=match_ind,
                                         init_pos=svm_state_hist[1, 0:2], return_as_dict=True)
         svm_factors     = np.c_[[svm_factors_out[i] for i in svm_predictor.factor_names]]
         if svm_factors.shape[1] == 1:
@@ -207,8 +195,8 @@ def generate_vpr_data(feature_type: Union[FeatureType, str],
             pred        = predictor.predict(dvc=dist_vect, match_ind=match_ind,
                                             rXY=ref_xyw_gt[:,0:2], init_pos=state_hist[1, 0:2])[0]
         elif isinstance(predictor, RobotMonitor2D):
-            factors_out = find_factors(factors_in=predictor.factor_names, _S=dist_vect,
-                                        rXY=ref_xyw_gt[:,0:2], match_ind=match_ind,
+            factors_out = find_factors(factors_in=predictor.factor_names, sim_matrix=dist_vect,
+                                        ref_xy=ref_xyw_gt[:,0:2], match_ind=match_ind,
                                         init_pos=state_hist[1, 0:2], return_as_dict=True)
             factors = np.c_[[factors_out[i] for i in predictor.factor_names]]
             if factors.shape[1] == 1:
@@ -216,17 +204,17 @@ def generate_vpr_data(feature_type: Union[FeatureType, str],
             x_scaled    = predictor.scaler.transform(X=factors)
             pred        = predictor.model.predict(X=x_scaled)[0]
         elif isinstance(predictor, nn.Module):
-            pred = test_nn_using_mvect(ref_xy=ref_xyw_gt[:,0:2],
+            pred = AdversityGenerationMethods.test_nn_using_mvect(ref_xy=ref_xyw_gt[:,0:2],
                                        qry_xy=qry_xyw_gt[i,0:2][np.newaxis,:],
                                        ref_feats=ref_feats, qry_feats=qry_feats[i][np.newaxis,:],
                                        tolerance=tolerance, nn_model=predictor,
                                        df_nn_train=df_nn_train, general=general,
                                        scaler=predictor.get_scaler(),
-                                       nn_threshold=df_nn_test.TEST_THRESHOLD[feature_type])[0][0]
+                                       nn_threshold=df_nn_test.TEST_THRESHOLD[vpr_descriptor])[0][0]
         elif isinstance(predictor, TruthPredictor):
             pred = metric_err < tolerance
         else:
-            raise BadPredictor(f"Unknown predictor: {str(type(predictor))}")
+            raise ValueError(f"Unknown predictor: {str(type(predictor))}")
         assert isinstance(pred, bool)
         if pred:
             state_hist[0,:] = ref_xyw_gt[match_ind,:]
@@ -311,12 +299,12 @@ def calc_ablation_stats(version: Union[AblationVersion,str], start_index: int, d
                                                          & (pred_a_t_positions < new_maximum)]
             final_pred_a_t_position = np.median(adj_a_t_positions)
         else:
-            raise BadAblationVersion("inner")
+            raise AblationVersion.Exception("inner")
         return [np.abs(truth_a_t_position - final_pred_a_t_position), None, true_ind]
     else:
-        raise BadAblationVersion("outer")
+        raise AblationVersion.Exception("outer")
 
-def generate_experiment2_dataset(   env: str, cond: str, feature_type: Union[FeatureType, str],
+def generate_experiment2_dataset(   env: str, cond: str, vpr_descriptor: Union[VPRDescriptor, str],
                                     df_nn_train: DFNNTrain, df_nn_test: DFNNTest,
                                     nn_general: NNGeneral, df_exp1: DFExperiment1,
                                     exp1: Experiment1, df_exp2: DFExperiment2,
@@ -329,50 +317,48 @@ def generate_experiment2_dataset(   env: str, cond: str, feature_type: Union[Fea
     hist_length    = df_exp2.HISTORY_LENGTH
     start_offset   = df_exp2.START_OFFSET
     mode_names     = general.MODE_NAMES
-    feature_type   = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     tolerance      = df_nn_train.VPR.COMBOS[env]['tolerance']
     # Diagnostic print:
     if exp2.VERBOSE:
         print(f'Generating for {env} {cond}')
     # Make predictor object and determine naive threshold values:
-    make_pred_params = {"env": env, "feature_type": feature_type, "general": general,
+    make_pred_params = {"env": env, "vpr_descriptor": vpr_descriptor, "general": general,
                         "df_general": df_general, "df_nn_train": df_nn_train,
                         "nn_general": nn_general, "train_rvpr": None, "calc_thresholds": False}
     naive_p_thresh, naive_r_thresh = make_load_naive_thresholds(
-            feature_type=feature_type, df_nn_train=df_nn_train, nn_general=nn_general,
+            vpr_descriptor=vpr_descriptor, df_nn_train=df_nn_train, nn_general=nn_general,
             df_general=df_general, general=general, df_exp1=df_exp1, exp1=exp1,
             verbose=exp2.VERBOSE)
     nn_predictor = make_predictor(assessor="NN", **make_pred_params)[2]
     svm_predictor = make_predictor(assessor="SVM", **make_pred_params)[2]
 
-    vpr_params  = { "env": env, "cond": cond, "combos": df_nn_train.VPR.COMBOS,
-                    "vpr_dp": general.VPR_DP, "verbose": exp2.VERBOSE, "crop_to_dataset": True,
-                    "try_gen":True}
-    ref_data    = make_load_vpr_dataset(set_type='ref', subset=df_nn_test.REF_SUBSETS[feature_type],
-                                        **vpr_params)
-    qry_data    = make_load_vpr_dataset(set_type='qry', subset=df_nn_test.QRY_SUBSETS[feature_type],
-                                        **vpr_params)
-    assert qry_data['px'].ndim == 2
-    assert ref_data['px'].ndim == 1
-    loop_gap    = np.sqrt(np.square(ref_data['px'][0]-ref_data['px'][-1]) + \
-                          np.square(ref_data['py'][0]-ref_data['py'][-1]))
+    vpr_params = { "env": env, "cond": cond, "combos": df_nn_train.VPR.COMBOS,
+                    "vpr_dp": general.VPR_DP, "verbose": exp2.VERBOSE, "try_gen":True}
+    ref_dataset = make_load_vpr_dataset(set_type='ref', \
+                                    subset=df_nn_test.REF_SUBSETS[vpr_descriptor], **vpr_params)
+    qry_dataset = make_load_vpr_dataset(set_type='qry', \
+                                    subset=df_nn_test.QRY_SUBSETS[vpr_descriptor], **vpr_params)
+    ref_xyw_gt  = ref_dataset.pxyw_of(topic_name=df_general.VPR.ODOM_TOPIC)
+    qry_xyw_gt  = qry_dataset.pxyw_of(topic_name=df_general.VPR.ODOM_TOPIC)
+    qry_xyw_wo  = qry_dataset.pxyw_of(topic_name=df_general.VPR.ENC_TOPIC)
 
-    qry_feats   = qry_data[feature_type]
-    ref_feats   = ref_data[feature_type]
-    qry_xyw_gt  = np.stack([qry_data['px'][:,0], qry_data['py'][:,0], qry_data['pw'][:,0]],
-                            axis=1) # ground truth (SLAM)
-    qry_xyw_wo  = np.stack([qry_data['px'][:,1], qry_data['py'][:,1], qry_data['pw'][:,1]],
-                            axis=1) # wheel encoder
-    ref_xyw_gt  = np.stack([ref_data['px'],      ref_data['py'],      ref_data['pw']],
-                            axis=1) # ground truth (SLAM)
+    qry_feats   = qry_dataset.data_of(descriptor_key=vpr_descriptor, \
+                                        topic_name=df_general.VPR.IMG_TOPIC)
+    ref_feats   = ref_dataset.data_of(descriptor_key=vpr_descriptor, \
+                                        topic_name=df_general.VPR.IMG_TOPIC)
+
+    loop_gap    = np.sqrt(np.square(ref_xyw_gt[0,0]-ref_xyw_gt[-1,0]) \
+                          + np.square(ref_xyw_gt[0,1]-ref_xyw_gt[-1,1]))
 
     # Generate VPR match data and classifications for each match:
-    pred_data   = generate_vpr_data(feature_type=feature_type, predictor=nn_predictor,
+    pred_data   = generate_vpr_data(vpr_descriptor=vpr_descriptor, predictor=nn_predictor,
                       svm_predictor=svm_predictor, qry_feats=qry_feats, ref_feats=ref_feats,
                       qry_xyw_gt=qry_xyw_gt, ref_xyw_gt=ref_xyw_gt, tolerance=tolerance,
                       naive_p_thresh=naive_p_thresh, naive_r_thresh=naive_r_thresh,
                       df_nn_train=df_nn_train, df_nn_test=df_nn_test, general=general, exp2=exp2)
-    assert not np.array_equal(np.array(pred_data['vpr']), np.array(pred_data['prd']))
+    if np.array_equal(np.array(pred_data['vpr']), np.array(pred_data['prd'])):
+        warnings.warn("Arrays equivalent ('vpr', 'prd') for {env}, {cond}")
     # Generate some path statistics:
     qry_wo_running_sum  = calc_path_stats(qry_xyw_wo)[0]
     ref_gt_running_sum  = calc_path_stats(ref_xyw_gt)[0]
@@ -429,7 +415,8 @@ def create_confusion_columns(_df: pd.DataFrame):
     # _df['FN'] = (_df['discard']==True ) & (_df['in_tol']==True )
     # _df['TP'] = (_df['discard']==False) & (_df['in_tol']==True )
     # _df['FP'] = (_df['discard']==False) & (_df['in_tol']==False)
-    # But we actually want this, because we're looking to see if the system correctly classifies when to localize/not localize:
+    # But we actually want this, because we're looking to see if the system correctly
+    # classifies when to localize/not localize:
     _df['TN'] = (_df['possible']==False) & (_df['discard']==True )
     _df['FN'] = (_df['possible']==True ) & (_df['discard']==True )
     _df['TP'] = (_df['possible']==True ) & (_df['discard']==False)
@@ -452,15 +439,15 @@ def create_confusion_columns(_df: pd.DataFrame):
     _df['TYPE'] = long_type
     return _df
 
-def experiment_2(feature_type: Union[FeatureType,str], df_nn_train: DFNNTrain, df_nn_test: DFNNTest,
-                 nn_general: NNGeneral, df_exp2: DFExperiment2, exp2: Experiment2,
-                 df_exp1: DFExperiment1, exp1: Experiment1, df_general: DFGeneral,
-                 general: General) -> pd.DataFrame:
+def experiment_2(vpr_descriptor: Union[VPRDescriptor,str], df_nn_train: DFNNTrain, \
+                    df_nn_test: DFNNTest, nn_general: NNGeneral, df_exp2: DFExperiment2, \
+                    exp2: Experiment2, df_exp1: DFExperiment1, exp1: Experiment1, \
+                    df_general: DFGeneral, general: General) -> pd.DataFrame:
     '''
     Perform experiment 2
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
-    exp2_params = {'feature_type': feature_type, 'df_nn_train': df_nn_train,
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
+    exp2_params = {'vpr_descriptor': vpr_descriptor, 'df_nn_train': df_nn_train,
             'df_nn_test': df_nn_test, 'nn_general': nn_general, 'df_exp1': df_exp1, 'exp1': exp1,
             'df_exp2': df_exp2, 'exp2': exp2, 'df_general': df_general, 'general': general}
     df_ln = generate_experiment2_dataset(env='Office', cond='Normal',  **exp2_params)
@@ -476,16 +463,16 @@ def experiment_2(feature_type: Union[FeatureType,str], df_nn_train: DFNNTrain, d
     df = create_confusion_columns(_df=df)
     return df
 
-def make_load_experiment_2(feature_type: Union[FeatureType, str], df_nn_train: DFNNTrain,
+def make_load_experiment_2(vpr_descriptor: Union[VPRDescriptor, str], df_nn_train: DFNNTrain,
                            df_nn_test: DFNNTest, nn_general: NNGeneral, df_exp1: DFExperiment1,
                            exp1: Experiment1, df_exp2: DFExperiment2, exp2: Experiment2,
                            df_general: DFGeneral, general: General) -> pd.DataFrame:
     '''
     For a given VPR descriptor, generate experiment 2 data.
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     raw_params = {"label": "exp2_data", "general": df_general, "exp": df_exp2,
-                  "train": df_nn_train, "test": df_nn_test, 'feature_type': feature_type}
+                  "train": df_nn_train, "test": df_nn_test, 'vpr_descriptor': vpr_descriptor}
     params = make_storage_safe(raw_params)
     data_saver = OSH(storage_path=Path(general.DIR_EXP_DS), build_dir=True, build_dir_parents=True,
                      prefix='exp2_data', saver=Saver.NUMPY_COMPRESS,
@@ -499,7 +486,7 @@ def make_load_experiment_2(feature_type: Union[FeatureType, str], df_nn_train: D
             print('Generating data ...')
         elif exp2.VERBOSE:
             print('Data failed to load; attempting to generate ...')
-        data = experiment_2(feature_type=feature_type, df_nn_train=df_nn_train,
+        data = experiment_2(vpr_descriptor=vpr_descriptor, df_nn_train=df_nn_train,
             df_nn_test=df_nn_test, nn_general=nn_general, df_exp1=df_exp1, exp1=exp1,
             df_exp2=df_exp2, exp2=exp2, df_general=df_general, general=general)
         data = data.reset_index()
@@ -509,50 +496,61 @@ def make_load_experiment_2(feature_type: Union[FeatureType, str], df_nn_train: D
             data_saver.save()
     return data
 
-def generate_svm_data(feature_type: Union[FeatureType, str], general: General,
+def generate_svm_data(vpr_descriptor: Union[VPRDescriptor, str], general: General,
                       df_general: DFGeneral, verbose: bool = False) -> Tuple[dict, dict]:
     '''
     Pre-generate SVM results
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     kwargs   = {"use_tqdm": True, "printer": None} \
         if verbose else {"use_tqdm": False, "printer": lambda *args, **kwargs: None}
-    svm_proc = SVMModelProcessor(ros=False, root=None, load_field=False, cuda=False,
-                                 qry_ip=None, ref_ip=None, **kwargs)
+    svm_proc = SVMModelProcessor(ros=False, root=None, cuda=False, **kwargs)
     svm_data_saver = OSH(storage_path=Path(general.DIR_EXP_DS), build_dir=True,
                          build_dir_parents=True, prefix='svm_nn_data', saver=Saver.NUMPY_COMPRESS,
                          verbose=verbose)
     combos = df_general.VPR.COMBOS
-    svm_factors = df_general.VPR.SVM_FACTORS[feature_type]
-    svm_subset = df_general.SVM_SUBSETS[feature_type]
-    ref_subset = df_general.TEST_REF_SUBSETS[feature_type]
-    qry_subset = df_general.TEST_QRY_SUBSETS[feature_type]
-    params = make_storage_safe({'label': 'svm_data_normal', 'dfg': df_general, 'ft': feature_type})
-    if ((not general.FORCE_GENERATE) and (svm_data_name:=svm_data_saver.load(params))):
-        svm_output = dict(svm_data_saver.get_object())
-        if verbose:
-            print(f'Loaded: {str(svm_data_name)}')
-        return svm_output['data'], svm_output['lens']
+    svm_factors = df_general.VPR.SVM_FACTORS[vpr_descriptor]
+    svm_subset = df_general.SVM_SUBSETS[vpr_descriptor]
+    ref_subset = df_general.TEST_REF_SUBSETS[vpr_descriptor]
+    qry_subset = df_general.TEST_QRY_SUBSETS[vpr_descriptor]
+    params = make_storage_safe({'label': 'svm_data_normal', 'dfg': df_general,
+                                'vpr_descriptor': vpr_descriptor})
+    # if ((not general.FORCE_GENERATE) and (svm_data_name:=svm_data_saver.load(params))):
+    #     svm_output = dict(svm_data_saver.get_object())
+    #     if verbose:
+    #         print(f'Loaded: {str(svm_data_name)}')
+    #     return svm_output['data'], svm_output['lens']
     #
     svm_data = {'Office': {}, 'Campus': {}, 'Fused': {}}
     svm_lens = {'Office': {}, 'Campus': {}}
     for svm_env in ['Office', 'Campus']:
         for svm_cond in ['Normal', 'Adverse', 'SVM']:
-            svm_dict  = make_svm_dict(env=svm_env, svm_factors=svm_factors,
+            svm_dict       = make_svm_dict(env=svm_env, svm_factors=svm_factors,
                                         subset=svm_subset, combos=combos)
-            svm_proc.load_model(model_params=svm_dict, try_gen=True, gen_datasets=True,
+            svm_proc.load_model(model_params=svm_dict, try_gen=False, gen_datasets=True,
                                 save_datasets=True)
-            ref_data = make_load_vpr_dataset(env=svm_env, cond=svm_cond, set_type='ref',
-                subset=ref_subset, combos=combos, vpr_dp=general.VPR_DP,
-                try_gen=True, crop_to_dataset=False)
-            qry_data = make_load_vpr_dataset(env=svm_env, cond=svm_cond, set_type='qry',
-                subset=qry_subset, combos=combos, vpr_dp=general.VPR_DP,
-                try_gen=True, crop_to_dataset=False)
-            svm_all_preds, _, svm_labels = svm_proc.predict_from_datasets_with_ytest(
-                ref=ref_data, qry=qry_data, do_print=False)
+            ref_params     = make_vpr_dataset_params(env=svm_env, cond=svm_cond, set_type='ref', \
+                                     subset=ref_subset, combos=combos)
+            ref_dataset    = make_vpr_dataset(params=ref_params, try_gen=True, \
+                                           vpr_dp=general.VPR_DP, verbose=verbose)
+            qry_params     = make_vpr_dataset_params(env=svm_env, cond=svm_cond, set_type='qry', \
+                                     subset=qry_subset, combos=combos)
+            qry_dataset    = make_vpr_dataset(params=qry_params, try_gen=True, \
+                                           vpr_dp=general.VPR_DP, verbose=verbose)
+            svm_ref_params = make_vpr_dataset_params(env=svm_env, cond=svm_cond, set_type='ref', \
+                                     subset=svm_subset['ref_subset'], combos=combos)
+            svm_qry_params = make_vpr_dataset_params(env=svm_env, cond=svm_cond, set_type='qry', \
+                                     subset=svm_subset['qry_subset'], combos=combos)
+            # print(svm_ref_params)
+            # print(svm_qry_params)
+            model_params   = SVMParams().populate(ref_params=svm_ref_params, qry_params=svm_qry_params, \
+                tol_mode=df_general.VPR.SVM_TOL_MODE, tol_thresh=combos[svm_env]['tolerance'], \
+                    factors=df_general.VPR.SVM_FACTORS[vpr_descriptor])
+            svm_stats      = svm_proc.predict_from_datasets(ref_dataset=ref_dataset, \
+                            qry_dataset=qry_dataset, model_params=model_params, save_model=True)
             svm_data[svm_env][svm_cond] = get_acc_and_confusion_stats(
-                label=svm_labels, pred=svm_all_preds)
-            svm_lens[svm_env][svm_cond] = len(svm_labels)
+                label=svm_stats.true_state, pred=svm_stats.pred_state)
+            svm_lens[svm_env][svm_cond] = len(svm_stats.true_state)
     # Stash data for a fused training regime:
     svm_data['Fused']['SVM'] = tuple([np.round(
         ((ostat*svm_lens['Office']['SVM']) + (cstat * svm_lens['Campus']['SVM']))
@@ -567,7 +565,7 @@ def generate_svm_data(feature_type: Union[FeatureType, str], general: General,
         svm_data_saver.save()
     return svm_data, svm_lens
 
-def generate_test_data(feature_type: Union[FeatureType, str], df_nn_test: DFNNTest,
+def generate_test_data(vpr_descriptor: Union[VPRDescriptor, str], df_nn_test: DFNNTest,
                        df_nn_train: DFNNTrain, nn_general: NNGeneral, general: General,
                        df_general: DFGeneral) -> dict:
     '''
@@ -576,10 +574,10 @@ def generate_test_data(feature_type: Union[FeatureType, str], df_nn_test: DFNNTe
     test_data_saver = OSH(storage_path=Path(general.DIR_NN_DS), build_dir=True,
         build_dir_parents=True, prefix='test_nn_data', saver=Saver.NUMPY_COMPRESS, verbose=False)
     #
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     #
     params = make_storage_safe({'label': 'test_data', 'train': df_nn_train, 'test': df_nn_test,
-              'general': general, 'ft': feature_type})
+              'general': general, 'vpr_descriptor': vpr_descriptor})
     if ((not general.FORCE_GENERATE) and (test_data_name:=test_data_saver.load(params))):
         test_data = test_data_saver.get_object()
         if general.NN_IM_SCRIPT_VERBOSE:
@@ -594,9 +592,9 @@ def generate_test_data(feature_type: Union[FeatureType, str], df_nn_test: DFNNTe
         test_data[env] = {}
         train_data = get_td_from_am(env=env, apply_model=df_nn_train.APPLY_MODEL)
         if not train_data.value in models:
-            model, model_osh = get_model_for(train_data=train_data, feature_type=feature_type,
-                                                nn_general=nn_general, df_nn_train=df_nn_train,
-                                                general=general, allow_generate=True)
+            model, model_osh = get_model_for(train_data=train_data, vpr_descriptor=vpr_descriptor,
+                datagen=AdversityGenerationMethods, nn_general=nn_general, df_nn_train=df_nn_train,
+                general=general, allow_generate=True)
             models[train_data.value] = model
             model_oshs[train_data.value] = model_osh
         #
@@ -606,14 +604,14 @@ def generate_test_data(feature_type: Union[FeatureType, str], df_nn_test: DFNNTe
             #
             for cond in ['Normal', 'Adverse', 'SVM']:
                 #
-                dataloader = generate_dataloader_from_npz(
-                    mode=TrainOrTest.TEST, env=env, cond=cond, feature_type=feature_type,
+                dataloader = AdversityGenerationMethods.generate_dataloader_from_npz(
+                    mode=TrainOrTest.TEST, env=env, cond=cond, vpr_descriptor=vpr_descriptor,
                     df_nn_train=df_nn_train, nn_general=nn_general, general=general,
                     df_general=df_general, scaler=model.get_scaler())[0]
                 #
                 test_data[env][cond] = process_data_through_model(dataloader=dataloader,
                     model=model_eval, continuous_model=df_nn_train.CONTINUOUS_MODEL,
-                    cont_threshold=0.5, bin_threshold=df_nn_test.TEST_THRESHOLD[feature_type],
+                    cont_threshold=0.5, bin_threshold=df_nn_test.TEST_THRESHOLD[vpr_descriptor],
                     criterion=None, optimizer=None, perform_backward_pass=False,
                     calculate_loss=False)
                 #
@@ -652,7 +650,7 @@ def find_i_ap(robot_run: RobotRun, img_index: int, x: float,
         print(f"New location along path = {new_location:5.2f} m @ image index {new_index}")
     return new_index
 
-def make_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_type: FeatureType,
+def make_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, vpr_descriptor: VPRDescriptor,
                        general: General, df_general: DFGeneral, nn_general: NNGeneral,
                        df_exp1: DFExperiment1, exp1: Experiment1, df_nn_test: DFNNTest) -> dict:
     '''
@@ -663,12 +661,12 @@ def make_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_type: F
     exp_variables   = {}
     for env in ['Office', 'Campus']:
         exp_variables[env] = {}
-        make_pred_params = {"env": env, "feature_type": feature_type, "general": general,
+        make_pred_params = {"env": env, "vpr_descriptor": vpr_descriptor, "general": general,
                             "df_general": df_general, "df_nn_train": df_nn_train,
                             "nn_general": nn_general, "train_rvpr": robot_vprs[env]['train'],
                             "calc_thresholds": False}
         naive_p_thresh, naive_r_thresh = make_load_naive_thresholds(
-            feature_type=feature_type, df_nn_train=df_nn_train, nn_general=nn_general,
+            vpr_descriptor=vpr_descriptor, df_nn_train=df_nn_train, nn_general=nn_general,
             df_general=df_general, general=general, df_exp1=df_exp1, exp1=exp1,
             verbose=exp1.VERBOSE)
         nn_predictor = make_predictor(assessor="NN", **make_pred_params)[2]
@@ -676,7 +674,7 @@ def make_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_type: F
         for _cond in ['Normal', 'Adverse']:
             testvpr: RobotVPR = robot_vprs[env]['test'][_cond]
             use_pred_params = dict(df_nn_train=df_nn_train,
-                nn_threshold=df_nn_test.TEST_THRESHOLD[feature_type], general=general,
+                nn_threshold=df_nn_test.TEST_THRESHOLD[vpr_descriptor], general=general,
                 robot_vpr=robot_vprs[env]['test'][_cond])
             exp_variables[env][_cond] = {}
             exp_variables[env][_cond]['vpr'] = testvpr.ALL_TRUE
@@ -688,7 +686,7 @@ def make_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_type: F
                 use_predictor(predictor=nn_predictor, **use_pred_params)
     return exp_variables
 
-def make_load_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_type: FeatureType,
+def make_load_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, vpr_descriptor: VPRDescriptor,
                        general: General, df_general: DFGeneral, df_exp1: DFExperiment1,
                        nn_general: NNGeneral, exp1: Experiment1, df_nn_test: DFNNTest):
     '''
@@ -699,13 +697,13 @@ def make_load_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_ty
                          build_dir_parents=True, prefix='exp1_expvar', saver=Saver.NUMPY,
                          verbose=exp1.VERBOSE)
     raw_params = {'label': 'exp1_expvar', 'train': df_nn_train, 'test': df_nn_test,
-                    'ft': feature_type, 'general': df_general, 'exp1': df_exp1}
+                    'vpr_descriptor': vpr_descriptor, 'general': df_general, 'exp1': df_exp1}
     params = make_storage_safe(raw_params)
     if (not exp1.FORCE_GENERATE) and expvar_loader.load(params):
         exp_variables = dict(expvar_loader.get_object())['exp1_expvar']
     else:
         exp_variables = make_exp_variables(robot_vprs=robot_vprs, df_nn_train=df_nn_train,
-                                            feature_type=feature_type, general=general,
+                                            vpr_descriptor=vpr_descriptor, general=general,
                                             df_general=df_general, nn_general=nn_general,
                                             df_exp1=df_exp1, exp1=exp1, df_nn_test=df_nn_test)
         if not exp1.SKIP_SAVE:
@@ -714,18 +712,18 @@ def make_load_exp_variables(robot_vprs: dict, df_nn_train: DFNNTrain, feature_ty
             expvar_loader.save()
     return exp_variables
 
-def make_robotvprs(feature_type: FeatureType, general: General, df_general: DFGeneral,
+def make_robotvprs(vpr_descriptor: VPRDescriptor, general: General, df_general: DFGeneral,
                    df_exp1: DFExperiment1, exp1: Experiment1) -> dict:
     '''
     Make robotvpr dictionary
     '''
     if exp1.VERBOSE:
         print("Making robotvprs...")
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     combos = df_general.VPR.COMBOS
     robotruns = {}
     robotvprs = {}
-    vpr_dp_params = {"feature_type": feature_type, "odom_topic": df_general.VPR.ODOM_TOPIC,
+    vpr_dp_params = {"vpr_descriptor": vpr_descriptor, "odom_topic": df_general.VPR.ODOM_TOPIC,
                      "img_topic": df_general.VPR.IMG_TOPIC}
     for env in ['Office', 'Campus']:
         robotruns[env] = {}
@@ -733,16 +731,17 @@ def make_robotvprs(feature_type: FeatureType, general: General, df_general: DFGe
         for cond in ['SVM', 'Normal', 'Adverse']:
             robotruns[env][cond] = {}
             # Reference traverse dataset:
-            ref_params = df_general.TRAIN_REF_SUBSETS[feature_type]  \
-                            if cond == 'SVM' else df_general.TEST_REF_SUBSETS[feature_type]
-            general.VPR_DP.load_dataset(dataset_params=make_vpr_dataset_params(
-                env=env, cond=cond, set_type='ref', subset=ref_params, combos=combos), try_gen=True)
+            ref_params = df_general.TRAIN_REF_SUBSETS[vpr_descriptor]  \
+                            if cond == 'SVM' else df_general.TEST_REF_SUBSETS[vpr_descriptor]
+            ref_params_in = make_vpr_dataset_params(
+                env=env, cond=cond, set_type='ref', subset=ref_params, combos=combos)
+            general.VPR_DP.load_dataset(dataset_params=ref_params_in, try_gen=True)
             robotruns[env][cond]['ref'] = \
                 RobotRun(folder="", npz_setup=True).from_dataset_processor(vprdp=general.VPR_DP,
                                                                             **vpr_dp_params)
             # Query traverse dataset:
-            qry_params = df_general.TRAIN_QRY_SUBSETS[feature_type]  \
-                            if cond == 'SVM' else df_general.TEST_QRY_SUBSETS[feature_type]
+            qry_params = df_general.TRAIN_QRY_SUBSETS[vpr_descriptor]  \
+                            if cond == 'SVM' else df_general.TEST_QRY_SUBSETS[vpr_descriptor]
             general.VPR_DP.load_dataset(dataset_params=make_vpr_dataset_params(
                 env=env, cond=cond, set_type='qry', subset=qry_params, combos=combos), try_gen=True)
             robotruns[env][cond]['qry'] = \
@@ -784,7 +783,7 @@ def make_robotvprs(feature_type: FeatureType, general: General, df_general: DFGe
             robotvprs[env]['test'][cond].qry.find_along_path_distances()
     return robotvprs
 
-def make_load_robotvprs(feature_type: FeatureType, general: General, df_general: DFGeneral,
+def make_load_robotvprs(vpr_descriptor: VPRDescriptor, general: General, df_general: DFGeneral,
                    df_exp1: DFExperiment1, exp1: Experiment1) -> dict:
     '''
     Make robotvpr dictionary: automatic load/save
@@ -792,12 +791,12 @@ def make_load_robotvprs(feature_type: FeatureType, general: General, df_general:
     rvpr_loader = OSH(storage_path=Path(general.DIR_EXP_DS), build_dir=True,
                       build_dir_parents=True, prefix='exp1_rvpr', saver=Saver.NUMPY,
                       verbose=exp1.VERBOSE)
-    params = make_storage_safe({'label': 'exp1_rvpr', 'ft': feature_type, 'general': df_general,
-                                'exp1': df_exp1})
+    params = make_storage_safe({'label': 'exp1_rvpr', 'vpr_descriptor': vpr_descriptor, \
+                                'general': df_general, 'exp1': df_exp1})
     if (not exp1.FORCE_GENERATE) and rvpr_loader.load(params):
         robotvprs = dict(rvpr_loader.get_object())['exp1_rvpr']
     else:
-        robotvprs = make_robotvprs(feature_type=feature_type, general=general,
+        robotvprs = make_robotvprs(vpr_descriptor=vpr_descriptor, general=general,
                                    df_general=df_general, df_exp1=df_exp1, exp1=exp1)
         if not exp1.SKIP_SAVE:
             rvpr_loader.set_object(object_params=params,
@@ -805,7 +804,7 @@ def make_load_robotvprs(feature_type: FeatureType, general: General, df_general:
             rvpr_loader.save()
     return robotvprs
 
-def experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, feature_type: FeatureType,
+def experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, vpr_descriptor: VPRDescriptor,
                     general: General, df_general: DFGeneral, df_exp1: DFExperiment1,
                     exp1: Experiment1, nn_general: NNGeneral) -> pd.DataFrame:
     '''
@@ -813,12 +812,12 @@ def experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, feature_type: Fea
     '''
     if exp1.VERBOSE:
         print('Generating RobotVPRs...')
-    robot_vprs = make_load_robotvprs(feature_type=feature_type, general=general,
+    robot_vprs = make_load_robotvprs(vpr_descriptor=vpr_descriptor, general=general,
                                      df_general=df_general, df_exp1=df_exp1, exp1=exp1)
     if exp1.VERBOSE:
         print('\tDone.\nGenerating predictors...')
     exp1_variables = make_load_exp_variables(robot_vprs=robot_vprs, df_nn_train=df_nn_train,
-        feature_type=feature_type, general=general,df_general=df_general, df_exp1=df_exp1,
+        vpr_descriptor=vpr_descriptor, general=general,df_general=df_general, df_exp1=df_exp1,
         nn_general=nn_general, exp1=exp1, df_nn_test=df_nn_test)
     if exp1.VERBOSE:
         print('\tDone.\n\tDataset generation completed.\nPerforming experiments...')
@@ -916,15 +915,16 @@ def experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, feature_type: Fea
         print('All jobs finished.')
     return data
 
-def make_load_experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, feature_type: FeatureType,
-                            general: General, df_general: DFGeneral, df_exp1: DFExperiment1,
-                            exp1: Experiment1, nn_general: NNGeneral) -> pd.DataFrame:
+def make_load_experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, \
+                           vpr_descriptor: VPRDescriptor, general: General, df_general: DFGeneral,
+                           df_exp1: DFExperiment1, exp1: Experiment1, nn_general: NNGeneral
+                           ) -> pd.DataFrame:
     '''
     For a given VPR descriptor, generate experiment 1 data.
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
     raw_params = {"label": "exp1_data", "general": df_general, "exp": df_exp1,
-                  "train": df_nn_train, "test": df_nn_test, 'feature_type': feature_type}
+                  "train": df_nn_train, "test": df_nn_test, 'vpr_descriptor': vpr_descriptor}
     params = make_storage_safe(raw_params)
     data_saver = OSH(storage_path=Path(general.DIR_EXP_DS), build_dir=True, build_dir_parents=True,
                      prefix='exp1_data', saver=Saver.NUMPY_COMPRESS,
@@ -939,8 +939,8 @@ def make_load_experiment_1(df_nn_train: DFNNTrain, df_nn_test: DFNNTest, feature
         elif exp1.VERBOSE:
             print('Data failed to load; attempting to generate ...')
         data = experiment_1(df_nn_train=df_nn_train, df_nn_test=df_nn_test,
-                feature_type=feature_type, general=general, df_general=df_general, df_exp1=df_exp1,
-                exp1=exp1, nn_general=nn_general)
+                vpr_descriptor=vpr_descriptor, general=general, df_general=df_general,
+                df_exp1=df_exp1, exp1=exp1, nn_general=nn_general)
         data = data.reset_index()
         if not exp1.SKIP_SAVE:
             data_saver.set_object(object_params=params, object_to_store={'data': data})
@@ -964,7 +964,7 @@ def get_precision_recall_thresholds(robot_vpr: RobotVPR, indices: list,
 
     return bl_metrics.d[match_p_d], bl_metrics.d[match_r_d]
 
-def make_predictor(assessor: str, env: str, feature_type: Union[FeatureType, str],
+def make_predictor(assessor: str, env: str, vpr_descriptor: Union[VPRDescriptor, str],
                    general: General, df_general: DFGeneral, df_nn_train: DFNNTrain,
                    nn_general: NNGeneral, train_rvpr: Optional[RobotVPR] = None,
                    calc_thresholds: bool = True) -> Tuple[Union[None, float], Union[None, float],
@@ -973,26 +973,24 @@ def make_predictor(assessor: str, env: str, feature_type: Union[FeatureType, str
     make predictor, then use it to generate the naive thresholds
     method is bulky as we have several options for predictors
     '''
-    feature_type = feature_type.name if isinstance(feature_type, Enum) else feature_type
-    svm_factors = df_general.VPR.SVM_FACTORS[feature_type]
+    vpr_descriptor = vpr_descriptor.name if isinstance(vpr_descriptor, Enum) else vpr_descriptor
+    svm_factors = df_general.VPR.SVM_FACTORS[vpr_descriptor]
     combos = df_general.VPR.COMBOS
     if train_rvpr is None: # Make our training data's RobotVPR:
-        vpr_params = {'feature_type': feature_type, 'img_topic': df_nn_train.VPR.IMG_TOPIC,
-                      'odom_topic': df_nn_train.VPR.ODOM_TOPIC}
+        vpr_params = {'vpr_descriptor': vpr_descriptor, 'img_topic': df_nn_train.VPR.IMG_TOPIC,
+                      'odom_topic': df_nn_train.VPR.ODOM_TOPIC, "vprdp": general.VPR_DP}
         # Make reference traverse robot run:
         ref_params = make_vpr_dataset_params(env=env, cond="SVM", set_type="ref",
-                        subset=df_general.TRAIN_REF_SUBSETS[feature_type], combos=combos)
+                        subset=df_general.TRAIN_REF_SUBSETS[vpr_descriptor], combos=combos)
         general.VPR_DP.load_dataset(dataset_params=ref_params, try_gen=True)
         train_ref_robotrun = \
-            RobotRun(folder="", npz_setup=True).from_dataset_processor(vprdp=general.VPR_DP,
-                                                                        **vpr_params)
+            RobotRun(folder="", npz_setup=True).from_dataset_processor(**vpr_params)
         # Make query traverse robot run:
         qry_params = make_vpr_dataset_params(env=env, cond="SVM", set_type="qry",
-                        subset=df_general.TRAIN_QRY_SUBSETS[feature_type], combos=combos)
+                        subset=df_general.TRAIN_QRY_SUBSETS[vpr_descriptor], combos=combos)
         general.VPR_DP.load_dataset(dataset_params=qry_params, try_gen=True)
         train_qry_robotrun = \
-            RobotRun(folder="", npz_setup=True).from_dataset_processor(vprdp=general.VPR_DP,
-                                                                        **vpr_params)
+            RobotRun(folder="", npz_setup=True).from_dataset_processor(**vpr_params)
         general.VPR_DP.unload()
         # Turn into robot vpr:
         train_rvpr = RobotVPR(train_ref_robotrun, train_qry_robotrun, norm=False)
@@ -1001,21 +999,21 @@ def make_predictor(assessor: str, env: str, feature_type: Union[FeatureType, str
     # Make predictor:
     if assessor == "NN":
         train_data = get_td_from_am(env=env, apply_model=df_nn_train.APPLY_MODEL)
-        predictor = get_model_for(train_data=train_data, feature_type=feature_type,
-                                  nn_general=nn_general, df_nn_train=df_nn_train, general=general,
-                                  allow_generate=True)[0]
+        predictor = get_model_for(train_data=train_data, vpr_descriptor=vpr_descriptor,
+            datagen=AdversityGenerationMethods, nn_general=nn_general, df_nn_train=df_nn_train,
+            general=general, allow_generate=True)[0]
         predictor.eval()
     elif assessor == "SVM":
-        predictor = RobotMonitor2D(rvpr=train_rvpr, factors_in=svm_factors)
+        predictor = RobotMonitor2D(robot_vpr=train_rvpr, factors_in=svm_factors)
     elif assessor == "TRUTH":
         predictor = TruthPredictor()
     else:
-        raise BadAssessor()
+        raise ValueError()
     #
     if not assessor == "TRUTH":
         # Predict:
         y_pred = use_predictor(df_nn_train=df_nn_train,
-                               nn_threshold=df_nn_train.TRAIN_THRESHOLD[feature_type],
+                               nn_threshold=df_nn_train.TRAIN_THRESHOLD[vpr_descriptor],
                                general=general, predictor=predictor, robot_vpr=train_rvpr)
     else:
         y_pred = train_rvpr.y
@@ -1037,28 +1035,17 @@ def use_predictor(df_nn_train: DFNNTrain, nn_threshold: float, general: General,
     Use predictor. Handles an SVM as a RobotMonitor2D or a neural network.
     '''
     if isinstance(predictor, RobotMonitor2D):
-        return predictor.predict_quality(vpr=robot_vpr)
+        return predictor.predict_quality(robot_vpr=robot_vpr)
     elif isinstance(predictor, nn.Module):
-        tolerance = robot_vpr.tolerance
-        qry_xy    = robot_vpr.qry.xy
-        ref_xy    = robot_vpr.ref.xy
-        qry_feats = robot_vpr.qry.features
-        ref_feats = robot_vpr.ref.features
-        return test_nn_using_mvect(
-            ref_xy=ref_xy,
-            qry_xy=qry_xy,
-            ref_feats=ref_feats,
-            qry_feats=qry_feats,
-            tolerance=tolerance,
-            nn_model=predictor,
-            df_nn_train=df_nn_train,
-            nn_threshold=nn_threshold,
-            general=general,
+        return AdversityGenerationMethods.test_nn_using_mvect(ref_xy=robot_vpr.ref.xy, \
+            qry_xy=robot_vpr.qry.xy, ref_feats=robot_vpr.ref.features, \
+            qry_feats=robot_vpr.qry.features, tolerance=robot_vpr.tolerance, nn_model=predictor, \
+            df_nn_train=df_nn_train, nn_threshold=nn_threshold, general=general, \
             scaler=predictor.get_scaler())[0]
     elif isinstance(predictor, TruthPredictor):
         return robot_vpr.y
     else:
-        raise BadPredictor(str(type(predictor)))
+        raise ValueError(str(type(predictor)))
 
 def sum_dist(running_sum, ind_1, ind_2, loop_gap: float = 0.0):
     '''

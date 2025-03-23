@@ -1,0 +1,4 @@
+*.npz
+*.pt
+generated/*
+*.pyc
