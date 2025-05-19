@@ -79,7 +79,7 @@ mamba activate ros1env
 ```
 Clone required repositories:
 ```
-git clone https://github.com/QVPR/pyaarapsi --branch v0.2.2
+git clone https://github.com/QVPR/pyaarapsi --branch v0.4.0
 ```
 ```
 git clone https://github.com/QVPR/aarapsiproject
